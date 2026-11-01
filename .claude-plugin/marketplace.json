@@ -1,0 +1,15 @@
+{
+  "name": "claycay",
+  "owner": {"name": "Claycay", "email": "hello@claycay.com"},
+  "metadata": {"description": "Claycay: your Claude activity as a playable voxel island world."},
+  "plugins": [
+    {
+      "name": "claycay",
+      "source": "./",
+      "description": "Turns your chats, artifacts, Code sessions, projects and scheduled-task runs into a blocky island world with XP, levels, achievements and a league.",
+      "version": "1.4",
+      "category": "fun",
+      "homepage": "https://claycay.com"
+    }
+  ]
+}

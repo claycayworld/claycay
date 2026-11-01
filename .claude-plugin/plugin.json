@@ -1,0 +1,8 @@
+{
+  "name": "claycay",
+  "version": "1.4",
+  "description": "Turns your Claude activity into a playable voxel island world with XP, levels, achievements and a league.",
+  "author": {"name": "Claycay", "email": "hello@claycay.com", "url": "https://claycay.com"},
+  "homepage": "https://claycay.com",
+  "keywords": ["gamification", "visualization", "voxel", "wrapped", "year-in-review", "three.js"]
+}
