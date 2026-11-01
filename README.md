@@ -60,6 +60,7 @@ including at work. The one thing it rules out is using this code to build a comp
 ## Links
 
 - Website and league: [claycay.com](https://claycay.com)
+- Privacy: [claycay.com/privacy](https://claycay.com/privacy)
 - Questions: hello@claycay.com
 
 ---
