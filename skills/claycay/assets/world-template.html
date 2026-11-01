@@ -55,7 +55,8 @@ button{font:inherit;color:inherit}
 #bar{height:.7rem;background:var(--panel-2);box-shadow:inset 1px 1px 0 var(--edge);position:relative;overflow:hidden}
 #bar i{position:absolute;inset:0 auto 0 0;background:var(--xp);width:0;transition:width .3s}
 #xpline{grid-column:1 / -1;display:flex;justify-content:space-between;gap:.5rem;font-size:.78rem;color:var(--muted);margin-top:.2rem;align-items:center}
-#troph{font-size:.85rem;padding:.25rem .5rem}
+#troph,#snap{font-size:.85rem;padding:.25rem .5rem}
+.xpb{display:flex;gap:.3rem}
 #time{margin-left:auto;padding:.6rem .8rem;display:grid;grid-template-columns:auto 1fr auto;gap:.5rem .7rem;align-items:center;min-width:min(36rem,58vw)}
 #play{width:2.6rem;height:2.6rem;padding:0;font-size:1.1rem;grid-row:span 2}
 #speed{grid-row:span 2;font-size:.85rem;padding:.3rem .5rem;min-width:2.8rem}
@@ -174,7 +175,7 @@ button{font:inherit;color:inherit}
     <div id="pname"></div>
     <div id="ptitle"></div>
     <div id="bar" role="progressbar" aria-label="Experience toward next level"><i></i></div>
-    <div id="xpline"><span id="xpnum"></span><button class="btn" id="troph">🏆 <span id="tcount"></span></button></div>
+    <div id="xpline"><span id="xpnum"></span><span class="xpb"><button class="btn" id="snap" aria-label="Save a postcard of this world" title="Save a postcard">📸</button><button class="btn" id="troph">🏆 <span id="tcount"></span></button></span></div>
   </div>
   <div id="time" class="blk">
     <button id="play" class="btn" aria-label="Play the days">▶</button>
@@ -656,6 +657,26 @@ $('addrival').addEventListener('click',()=>{ const msg=$('rmsg');
     renderLeague(); }
   catch(e){ msg.textContent=e.message; } });
 
+/* ---------- postcard: the current view plus level and counts, never titles (labels are HTML, not in the canvas) ---------- */
+function postcard(){ const PW=1200, PH=630, c=document.createElement('canvas'); c.width=PW; c.height=PH; const g=c.getContext('2d');
+  renderer.render(scene,camera); // drawImage straight after render, so no preserveDrawingBuffer needed
+  const sw=canvas.width, sh=canvas.height, k=Math.max(PW/sw,PH/sh); g.drawImage(canvas,(PW-sw*k)/2,(PH-sh*k)/2,sw*k,sh*k);
+  const pix=getComputedStyle(document.documentElement).getPropertyValue('--pix')||'monospace';
+  const xp=xpAt(NDAYS), L=levelOf(xp), K=W.card.k||{}, nA=W.achievements.length;
+  const stats=[[K.chats,'chats'],[K.arts,'artifacts'],[K.sess,'Code sessions'],[K.runs,'task runs'],[K.proj,'projects']].filter(x=>x[0]).map(([n,t])=>n.toLocaleString('en')+' '+t).join('  ·  ');
+  const grad=g.createLinearGradient(0,PH-230,0,PH); grad.addColorStop(0,'rgba(10,14,28,0)'); grad.addColorStop(1,'rgba(10,14,28,.88)'); g.fillStyle=grad; g.fillRect(0,PH-230,PW,230);
+  g.fillStyle='#f5c542'; g.fillRect(40,PH-150,110,110); g.fillStyle='#1d2330'; g.font=`600 64px ${pix}`; g.textAlign='center'; g.textBaseline='middle'; g.fillText(String(L),95,PH-92);
+  g.font=`600 18px ${pix}`; g.fillText('LEVEL',95,PH-136);
+  g.textAlign='left'; g.textBaseline='alphabetic'; g.fillStyle='#fff'; g.font=`600 46px ${pix}`; g.fillText((W.owner||'My')+'’s Claycay',172,PH-102,PW-220);
+  g.font=`400 26px ${pix}`; g.fillStyle='#f5c542'; g.fillText(`${titleOf(L)}  ·  ${xp.toLocaleString('en')} XP  ·  ${nA} achievements`+(W.card.st?`  ·  ${W.card.st}-day streak`:''),172,PH-66,PW-220);
+  g.font=`400 21px ${pix}`; g.fillStyle='rgba(255,255,255,.85)'; g.fillText(stats,172,PH-36,PW-220);
+  g.fillStyle='rgba(10,14,28,.7)'; g.fillRect(PW-236,24,212,48); g.fillStyle='#fff'; g.font=`600 26px ${pix}`; g.textAlign='center'; g.textBaseline='middle'; g.fillText('claycay.com',PW-130,49);
+  c.toBlob(async b=>{ if(!b){ say('This browser wouldn’t make the picture. Try a screenshot.'); return; }
+    const f=new File([b],'claycay-postcard.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})&&matchMedia('(pointer:coarse)').matches){ try{ await navigator.share({files:[f],text:'My Claycay, level '+L+'. Grow yours at claycay.com'}); return; }catch(e){ if(e.name==='AbortError') return; } }
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='claycay-postcard.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    say('📸 Postcard saved. Turn the view first if you want a different angle.'); },'image/png'); }
+$('snap').addEventListener('click',postcard);
 $('troph').addEventListener('click',()=>{ renderTrophies(curT()); renderLeague(); $('trophies').classList.add('show'); $('tclose').focus(); });
 $('tclose').addEventListener('click',()=>$('trophies').classList.remove('show'));
 $('trophies').addEventListener('click',e=>{ if(e.target.id==='trophies') $('trophies').classList.remove('show'); });

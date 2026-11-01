@@ -7,6 +7,8 @@ as towers, and when a run fails it bonks, smokes and complains in a speech bubbl
 play and watch your history build itself day by day, with XP, levels, achievements and
 quests on top.
 
+[![Sam's Claycay, a made-up demo world at level 11](docs/demo-postcard.png)](https://claycay.com/demo)
+
 **See one first:** [claycay.com/demo](https://claycay.com/demo) (Sam is made up, level 11).
 
 ## Install
@@ -31,6 +33,8 @@ Then ask: *"Build my Claycay"*.
 - An island per kind of activity: Chat Village, The Forge, Cowork Workshop, Project
   Archipelago, and a Scheduled Tasks island with a lighthouse, ghosts for duplicate tasks
   and gravestones for retired ones.
+- 📸 Postcards: one tap saves a picture of your island with your level and counts (never
+  titles), sized for social posts.
 - XP and levels (level 10 starts at 2,250 XP), 17 achievements plus a secret one, and
   quests taken from your own loose ends.
 - A league: post your score card on [claycay.com](https://claycay.com) and see where you stand.

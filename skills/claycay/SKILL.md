@@ -57,7 +57,9 @@ history unfold with their score climbing.
    Otherwise present the HTML file. On a second build for the same person, update the
    same artifact by passing its url.
 6. **Tell them** their level and title, two or three achievements worth bragging about,
-   one they're closest to unlocking, and how to play (press ▶, tap things, open 🏆).
+   one they're closest to unlocking, and how to play (press ▶, tap things, open 🏆). Mention
+   📸 next to the trophy: it saves a postcard picture of their island with level and counts,
+   never titles, ready to post.
    Mention the league in one line: 🏆 → copy the score card, then either post it on
    claycay.com (the public leaderboard) or send it to a friend who has their own Claycay.
    If the person asks where they rank, or has posted before, run `scripts/rank.py` (below).
