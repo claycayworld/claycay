@@ -46,6 +46,21 @@ Then ask: *"Build my Claycay"*.
 - Sharing your world? Build it with `--redact` to hide chat titles, chat links and task notes.
 - The card checksum catches typos, not cheaters. The league is for fun.
 
+## What it reads, sends and fetches
+
+- **Reads:** your Claude activity that the current session can see (chat and artifact
+  titles and dates, projects, scheduled tasks and their runs). In Claude Code,
+  `scripts/collect_claude_code.py` reads only timestamps and project folder names from
+  `~/.claude/projects`, never message content. All of this stays in the HTML file it writes.
+- **Fetches:** `https://claycay.com/skill-version.json` once per build, to say if a newer
+  version is out. Nothing about you is sent with it.
+- **Sends, only when you ask for your rank:** `scripts/rank.py` posts your score card (counts
+  and achievement ids, no titles) to `https://claycay.com/api/rank`, which answers and stores nothing.
+- **Your world page loads** three.js from `cdnjs.cloudflare.com` and fonts from Google Fonts.
+  It has no analytics. Its links to claycay.com only open when you click them.
+- **Posting to the league** happens only if you copy your card and paste it on claycay.com
+  yourself. See the [privacy page](https://claycay.com/privacy) for what the site stores.
+
 ## Scoring
 
 Chat 10, artifact 30, Code session 15, project 20, scheduled run 5 (delivered) down to 1
