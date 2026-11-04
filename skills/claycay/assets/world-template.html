@@ -60,7 +60,7 @@ button{font:inherit;color:inherit}
 #time{margin-left:auto;padding:.6rem .8rem;display:grid;grid-template-columns:auto 1fr auto;gap:.5rem .7rem;align-items:center;min-width:min(36rem,58vw)}
 #play{width:2.6rem;height:2.6rem;padding:0;font-size:1.1rem;grid-row:span 2}
 #speed{grid-row:span 2;font-size:.85rem;padding:.3rem .5rem;min-width:2.8rem}
-#days{display:grid;gap:1px;height:1.5rem}
+#days{display:grid;gap:1px;height:1.5rem;touch-action:none}
 #days button{border:0;padding:0;cursor:pointer;background:var(--panel-2);position:relative;display:flex;flex-direction:column-reverse;overflow:hidden;min-width:0}
 #days button i{display:block;width:100%}
 #days button i.ev{position:absolute;top:0;left:0;right:0;height:4px}
@@ -167,6 +167,7 @@ body.gaming #story,body.gaming #card{display:none!important}
   #time{min-width:0;width:100%}
   #dayline .lgs{display:none}
   #dots{display:none}
+  #days{height:2.2rem}
   #story{left:0;right:0;bottom:0;width:100%;max-height:40vh;overflow:auto;padding:.9rem 1rem calc(.8rem + env(safe-area-inset-bottom,0px))}
   #story h2{font-size:1.3rem}
   #story p{font-size:.95rem}
@@ -724,7 +725,14 @@ for(let i=0;i<NDAYS;i++){ const b=document.createElement('button'); b.title=dayN
   BYDAY[i].forEach(e=>{ if(e.k==='run') c[e.r[3]]=(c[e.r[3]]||0)+1; });
   for(const k of ORDER) if(c[k]){ const s=document.createElement('i'); s.style.height=(c[k]/maxRuns*100)+'%'; s.style.background='#'+OUT[k].toString(16).padStart(6,'0'); b.appendChild(s); }
   const ev=BYDAY[i].find(e=>e.k==='ship'); if(ev){ const s=document.createElement('i'); s.className='ev'; s.style.background='#'+SRC[ev.src].slice(2)[0].toString(16).padStart(6,'0'); b.appendChild(s); }
-  b.addEventListener('click',()=>{ setDay(i,.5); playing=false; syncPlay(); hud(); }); daysEl.appendChild(b); }
+  b.addEventListener('click',e=>{ if(e.detail===0) pickDay(i); }); daysEl.appendChild(b); }  // keyboard; pointers scrub below
+// press and slide across the strip to pick a day: on a phone each day can be a few pixels wide
+function pickDay(i){ setDay(i,.5); playing=false; syncPlay(); hud(); }
+const dayAt=x=>{ const r=daysEl.getBoundingClientRect(); return Math.max(0,Math.min(NDAYS-1,Math.floor((x-r.left)/r.width*NDAYS))); };
+let scrub=false;
+daysEl.addEventListener('pointerdown',e=>{ scrub=true; daysEl.setPointerCapture(e.pointerId); pickDay(dayAt(e.clientX)); e.preventDefault(); });
+daysEl.addEventListener('pointermove',e=>{ if(scrub){ const i=dayAt(e.clientX); if(i!==day) pickDay(i); } });
+for(const ev of ['pointerup','pointercancel']) daysEl.addEventListener(ev,()=>{ scrub=false; });
 { const L=$('legend'); const items=[]; if(W.runs.length) items.push(['#f5c542','delivered'],['#e0453a','blocked'],['#ff8a2a','error']);
   if(codeArts.length) items.push(['#43b5ad','made in Code']); if(coArts.length) items.push(['#d16ba5','made in Cowork']); if(W.chats.length) items.push(['#5b8def','chat']);
   for(const [c,t] of items){ const s=document.createElement('span'); s.className='lg'; const sw=document.createElement('i'); sw.className='sw'; sw.style.background=c; s.append(sw,t); L.appendChild(s); } }
