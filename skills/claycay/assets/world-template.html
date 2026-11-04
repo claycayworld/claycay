@@ -154,6 +154,8 @@ button{font:inherit;color:inherit}
 #game .end{width:100%;font-family:var(--read);font-size:.95rem;margin:0}
 #game .end b{font-family:var(--pix)}
 #game .row{display:flex;gap:.5rem;margin-left:auto}
+#gyou{position:fixed;left:0;top:0;z-index:14;font-family:var(--pix);font-weight:600;font-size:1rem;color:#1d2330;background:#f5c542;padding:.1rem .45rem;pointer-events:none;white-space:nowrap;box-shadow:0 0 0 3px #1d2330}
+#gpoint{position:fixed;left:0;top:0;z-index:14;font-family:var(--pix);font-weight:600;font-size:1.1rem;color:#fff;background:#c96a45;padding:.15rem .5rem;pointer-events:none;white-space:nowrap;box-shadow:0 0 0 3px #1d2330}
 #game small{width:100%;font-family:var(--read);font-size:.78rem;color:var(--muted)}
 body.gaming #story,body.gaming #card{display:none!important}
 #nogl{position:fixed;inset:0;display:none;place-items:center;padding:2rem;text-align:center;color:#fff}
@@ -237,7 +239,7 @@ body.gaming #story,body.gaming #card{display:none!important}
     <p class="sub" style="margin-top:1.2rem">Claycay (clay-kay): a cay is a small island built from sand and coral, a little at a time. Like yours. Claycay is an independent project, not affiliated with or endorsed by Anthropic. Claude is a trademark of Anthropic. <span id="skillv"></span></p>
   </div>
 </div>
-<div id="game" class="blk" aria-live="polite"></div>
+<div id="game" class="blk" aria-live="polite"></div><div id="gpoint" hidden>👇 Bonk it!</div><div id="gyou" hidden>You</div>
 <div id="toast"></div>
 <div id="nogl"><p>This world needs WebGL, which this browser has turned off.</p></div>
 
@@ -770,36 +772,51 @@ const WAVES=(()=>{ const by={}; FAILS.forEach(r=>(by[r[0]]=by[r[0]]||[]).push(r)
     .map(([d,runs])=>({day:+d,runs,label:`${dayName(+d)}: ${runs.length} stumble${runs.length>1?'s':''}`}));
   while(w.length<3) w.push({day:null,runs:[],label:'Practice round'}); return w; })();
 const GM={}; const gmat=c=>GM[c]||(GM[c]=new THREE.MeshLambertMaterial({color:c,map:TEX}));
-const gBody=new THREE.BoxGeometry(.95,.75,.95), gEye=new THREE.BoxGeometry(.22,.22,.06), gPup=new THREE.BoxGeometry(.1,.1,.04), gHorn=new THREE.BoxGeometry(.14,.3,.14);
+const gArrow=new THREE.ConeGeometry(.42,.75,4), gArrowMat=new THREE.MeshBasicMaterial({color:0xff3b30}); const gBody=new THREE.BoxGeometry(.95,.75,.95), gEye=new THREE.BoxGeometry(.22,.22,.06), gPup=new THREE.BoxGeometry(.1,.1,.04), gHorn=new THREE.BoxGeometry(.14,.3,.14);
 function gremlin(o){ const g=new THREE.Group(); const b=new THREE.Mesh(gBody,gmat(OUT[o]??0xe0453a)); b.position.y=.4; b.castShadow=true; g.add(b);
   for(const sx of [-.2,.2]){ const e=new THREE.Mesh(gEye,gmat(0xffffff)); e.position.set(sx,.55,.48); const p=new THREE.Mesh(gPup,gmat(0x1d2330)); p.position.set(sx,.53,.52); const h=new THREE.Mesh(gHorn,gmat(0x2c3240)); h.position.set(sx*1.6,.9,0); g.add(e,p,h); }
+  const ar=new THREE.Mesh(gArrow,gArrowMat); ar.rotation.x=Math.PI; ar.position.y=1.75; g.add(ar); g.userData.arrow=ar;   // red arrows so they never blend in with the roofs
   g.scale.setScalar(1.45); scene.add(g); return g; }
 function spawnPoint(r){ const T=r&&TOPS['t:'+r[2]];
   if(T&&GOAL){ const dx=T.x-GOAL.x, dz=T.z-GOAL.z, d=Math.hypot(dx,dz)||1; for(const k of [3,2,1.2]){ const x=T.x+dx/d*k, z=T.z+dz/d*k; if(land(x,z)) return [x,z]; } }
   for(let i=0;i<20;i++){ const a=Math.random()*Math.PI*2, R=GI.r-2.5-Math.random()*2, x=GI.x+Math.cos(a)*R, z=GI.z+Math.sin(a)*R; if(land(x,z)) return [x,z]; }
   return [GI.x+GI.r-3,GI.z]; }
+// tiny synth for game sounds: no files, nothing loaded. On by default, the choice is remembered.
+function makeSfx(load,save){ let ctx=null, on=load()!==false;
+  function tone(f0,f1,dur,type,vol,at){ const t=ctx.currentTime+(at||0), o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(Math.max(30,f1),t+dur);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+dur+.02); }
+  const notes=(fs,step,type,vol)=>fs.forEach((f,i)=>tone(f,f,step*1.1,type,vol,i*step));
+  const S={ bonk:k=>{ const p=1+Math.min(6,k||0)*.08; tone(640*p,160*p,.12,'square',.16); tone(110,55,.1,'sine',.35); },
+    ouch:()=>{ tone(320,70,.38,'sawtooth',.18); }, tick:()=>tone(660,660,.07,'square',.1), go:()=>tone(990,990,.16,'square',.12),
+    wave:()=>notes([523,659,784],.09,'square',.09), win:()=>notes([523,659,784,1047,1319],.1,'square',.1), lose:()=>notes([392,330,262,196],.14,'triangle',.16),
+    stamp:()=>notes([784,1047],.08,'triangle',.14) };
+  return { get on(){ return on; }, toggle(){ on=!on; save(on); if(on) this.play('tick'); return on; },
+    play(n,k){ if(!on) return; try{ ctx=ctx||new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); S[n]&&S[n](k); }catch(e){} } }; }
+const SFX=makeSfx(()=>store.get('cw-sound'),v=>store.set('cw-sound',v));
 let game=null; const keys={};
 addEventListener('keydown',e=>{ if(!game) return; const k=e.key.toLowerCase(); if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)){ keys[k]=true; e.preventDefault(); } });
 addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 const GHUD=$('game');
 function ghud(){ if(!game) return; if(game.over){ return; }
-  GHUD.innerHTML=`<span class="wv"></span><span class="hp">${'♥'.repeat(game.hp)}${'♡'.repeat(3-game.hp)}</span><span class="sc">🔨 ${game.score}</span><span class="row"><button class="btn" id="gquit">Quit</button></span><small>${matchMedia('(pointer:coarse)').matches?'Tap where the islander should run.':'WASD or arrow keys to move, or click the ground.'} Walk into a gremlin to bonk it. Don’t let them reach ${GOALNAME}.</small>`;
-  GHUD.querySelector('.wv').textContent=`Wave ${game.w+1} of ${WAVES.length}. ${WAVES[game.w].label}`; $('gquit').onclick=endGame; }
+  GHUD.innerHTML=`<span class="wv"></span><span class="hp">${'♥'.repeat(game.hp)}${'♡'.repeat(3-game.hp)}</span><span class="sc">🔨 ${game.score}</span><span class="row"><button class="btn" id="gsnd" aria-label="Sound">${SFX.on?'🔊':'🔇'}</button><button class="btn" id="gquit">Quit</button></span><small>${matchMedia('(pointer:coarse)').matches?'Tap where the islander should run.':'WASD or arrow keys to move, or click the ground.'} Walk into a gremlin to bonk it. Don’t let them reach ${GOALNAME}.</small>`;
+  GHUD.querySelector('.wv').textContent=`Wave ${game.w+1} of ${WAVES.length}. ${WAVES[game.w].label}`; $('gquit').onclick=endGame; $('gsnd').onclick=()=>{ SFX.toggle(); ghud(); }; }
 function startWave(w){ const W_=WAVES[w]; game.w=w; game.left=Math.max(6+w*3,Math.min(14+w*6,W_.runs.length*2)); game.spawnT=1.2; game.gap=Math.max(.5,1.5-w*.35); game.speed=1.5+w*.45;
   if(W_.day!=null){ setDay(W_.day,.5); updDay(); }
-  say(`Wave ${w+1}: ${W_.label}`,true); ghud(); }
+  say(`Wave ${w+1}: ${W_.label}`,true); SFX.play('wave'); ghud(); }
 function startGame(){ if(!GI||!HOME) return; document.activeElement&&document.activeElement.blur&&document.activeElement.blur(); if(bloop>=0) stopBloopers(); playing=false; syncPlay(); hideCard(); $('trophies').classList.remove('show');
   if(asleep) setSleep(false,0); [legL,legR,armL,armR].forEach(m=>m.rotation.set(0,0,0)); eyeL.scale.y=eyeR.scale.y=1; torso.scale.y=1; avatar.rotation.set(0,0,0);
   let sx=GOAL.x+3, sz=GOAL.z+3; if(!land(sx,sz)){ sx=GOAL.x; sz=GOAL.z; }
-  game={p:new THREE.Vector3(sx,0,sz),target:null,hp:3,score:0,combo:0,lastBonk:-9,gs:[],w:0,over:false,t:0,ri:0};
+  game={p:new THREE.Vector3(sx,0,sz),target:null,hp:3,score:0,combo:0,lastBonk:-9,gs:[],w:0,over:false,t:0,ri:0,hinted:false};
   document.body.classList.add('gaming'); GHUD.classList.add('on'); $('bonk').textContent='Stop Bug Bonk';
   if(!FAILS.length) say('No failed runs on record. These are practice gremlins.');
   avatar.scale.setScalar(1.7); flyTo([GI.x,2,GI.z,rig.yaw,1.18,camera.aspect<1?GI.r*1.45+10:GI.r*2.7+26],1.2); startWave(0); }
-function endGame(){ if(!game) return; for(const G of game.gs) scene.remove(G.m); game=null; asleep=null; avatar.scale.setScalar(1.25);
+function endGame(){ if(!game) return; $('gpoint').hidden=true; $('gyou').hidden=true; for(const G of game.gs) scene.remove(G.m); game=null; asleep=null; avatar.scale.setScalar(1.25);
   document.body.classList.remove('gaming'); GHUD.classList.remove('on'); GHUD.textContent=''; $('bonk').textContent='🔨 Bug Bonk'; for(const k in keys) keys[k]=false; setDay(NDAYS-1,.999); viewHour=12; go(cur); }
-function finish(won){ game.over=true; for(const G of game.gs) scene.remove(G.m); game.gs=[];
+function finish(won){ game.over=true; $('gpoint').hidden=true; $('gyou').hidden=true; for(const G of game.gs) scene.remove(G.m); game.gs=[];
   const key='cw-bonk-'+W.key, best=Math.max(store.get(key)||0,game.score), rec=game.score>(store.get(key)||0); store.set(key,best);
-  if(won){ fireworks(GOAL.clone().add(new THREE.Vector3(0,6,0)),40); say(`${GOALNAME[0].toUpperCase()+GOALNAME.slice(1)} is safe!`,true); } else say('The gremlins got in. Shake it off.');
+  if(won){ SFX.play('win'); fireworks(GOAL.clone().add(new THREE.Vector3(0,6,0)),40); say(`${GOALNAME[0].toUpperCase()+GOALNAME.slice(1)} is safe!`,true); } else { SFX.play('lose'); say('The gremlins got in. Shake it off.'); }
   GHUD.innerHTML=`<p class="end"></p><span class="row"><button class="btn" id="gagain">Play again</button><button class="btn" id="gquit">Back to the story</button></span><small>Just for fun: Bug Bonk points never count as XP.</small>`;
   GHUD.querySelector('.end').innerHTML=`<b>${won?'All '+WAVES.length+' waves cleared!':'Game over in wave '+(game.w+1)+'.'}</b> You bonked <b>${game.score}</b> gremlin${game.score===1?'':'s'}. ${rec&&game.score?'New best!':'Best: '+best+'.'}`;
   $('gagain').onclick=()=>{ endGame(); startGame(); }; $('gquit').onclick=endGame; }
@@ -823,13 +840,18 @@ function stepGame(dt){ if(!game||game.over) return; game.t+=dt; const G0=game;
     if(run&&G0.ri%4===1){ const T=W.tasks.find(t=>t.id===run[2]); bubble('t:'+run[2],o==='blocked'?'bad':o==='error'?'err':'ghost',T?T.name:run[2],quip(run[2],o)); } } }
   // gremlins
   for(let i=G0.gs.length-1;i>=0;i--){ const g=G0.gs[i]; const dx=GOAL.x-g.x, dz=GOAL.z-g.z, d=Math.hypot(dx,dz);
-    if(d<1.8){ scene.remove(g.m); G0.gs.splice(i,1); G0.hp--; lampFlash=1; say(G0.hp>0?`A gremlin reached ${GOALNAME}!`:'Oh no.'); ghud(); if(G0.hp<=0){ finish(false); return; } continue; }
+    if(d<1.8){ scene.remove(g.m); G0.gs.splice(i,1); G0.hp--; lampFlash=1; if(G0.hp>0) SFX.play('ouch'); say(G0.hp>0?`A gremlin reached ${GOALNAME}!`:'Oh no.'); ghud(); if(G0.hp<=0){ finish(false); return; } continue; }
     g.x+=dx/d*g.sp*dt; g.z+=dz/d*g.sp*dt; g.ph+=dt*9;
     g.m.position.set(g.x,surf(Math.round(g.x),Math.round(g.z))+(reduce?0:Math.abs(Math.sin(g.ph))*.4),g.z); g.m.rotation.y=Math.atan2(dx,dz);
-    if(Math.hypot(g.x-G0.p.x,g.z-G0.p.z)<1.5){ const at=g.m.position.clone(); scene.remove(g.m); G0.gs.splice(i,1);
-      G0.combo=G0.t-G0.lastBonk<1.2? G0.combo+1 : 1; G0.lastBonk=G0.t; G0.score++;
+    if(Math.hypot(g.x-G0.p.x,g.z-G0.p.z)<1.9){ const at=g.m.position.clone(); scene.remove(g.m); G0.gs.splice(i,1);
+      G0.hinted=true; G0.combo=G0.t-G0.lastBonk<1.2? G0.combo+1 : 1; G0.lastBonk=G0.t; G0.score++; SFX.play('bonk',G0.combo-1);
       for(let k=0;k<6;k++){ const p=getP(sGeo,OUT.error); p.kind='spark'; p.dur=.9; p.from=at.clone(); p.vel=new THREE.Vector3((Math.random()-.5)*6,4+Math.random()*3,(Math.random()-.5)*6); p.mesh.position.copy(at); }
       floatAt(at,G0.combo>1?`BONK ×${G0.combo}`:'BONK'); ghud(); } }
+  // point at the gremlin closest to the goal until the first bonk
+  const gp=$('gpoint'); if(!G0.hinted&&G0.gs.length){ const g=G0.gs.reduce((a,b)=>Math.hypot(GOAL.x-a.x,GOAL.z-a.z)<Math.hypot(GOAL.x-b.x,GOAL.z-b.z)?a:b);
+    v.set(g.x,g.m.position.y+3.6,g.z).project(camera); gp.hidden=false; gp.style.transform=`translate(${(v.x*.5+.5)*innerWidth}px,${(-v.y*.5+.5)*innerHeight}px) translate(-50%,-100%)`; } else gp.hidden=true;
+  const gy=$('gyou'); if(!G0.hinted){ v.set(G0.p.x,avatar.position.y+4.2,G0.p.z).project(camera); gy.hidden=false; gy.style.transform=`translate(${(v.x*.5+.5)*innerWidth}px,${(-v.y*.5+.5)*innerHeight}px) translate(-50%,-100%)`; } else gy.hidden=true;
+  for(const g of G0.gs) g.m.userData.arrow.position.y=1.75+(reduce?0:Math.abs(Math.sin(G0.t*5))*.35);
   if(G0.left<=0&&!G0.gs.length){ if(G0.w+1<WAVES.length) startWave(G0.w+1); else finish(true); } }
 $('bonk').addEventListener('click',()=>game?endGame():startGame());
 if(!GI||!HOME) $('bonk').hidden=true;
