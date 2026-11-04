@@ -35,9 +35,12 @@ Then ask: *"Build my Claycay"*.
   and gravestones for retired ones.
 - 📸 Postcards: one tap saves a picture of your island with your level and counts (never
   titles), sized for social posts.
+- 🔨 Bug Bonk: steer the islander and bonk the gremlins your failed runs let loose. The
+  waves are your three worst days. Just for fun: game points never count as XP.
 - XP and levels (level 10 starts at 2,250 XP), 17 achievements plus a secret one, and
   quests taken from your own loose ends.
 - A league: post your score card on [claycay.com](https://claycay.com) and see where you stand.
+  Friends can visit your island there, bonk your gremlins and stamp your guestbook.
 
 ## Privacy
 

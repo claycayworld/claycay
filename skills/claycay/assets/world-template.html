@@ -145,6 +145,17 @@ button{font:inherit;color:inherit}
 .zzz small{display:block;font-size:.75rem;margin-top:.1rem;letter-spacing:.02em}
 @keyframes zfloat{0%{opacity:0;transform:translate(0,6px)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-18px)}}
 @media (prefers-reduced-motion: reduce){ .zzz i{animation:none;opacity:1} }
+/* Bug Bonk */
+#game{z-index:15;position:fixed;right:max(14px,env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:.6rem .8rem;display:none;gap:.4rem .9rem;align-items:center;flex-wrap:wrap;max-width:min(30rem,calc(100vw - 28px));font-family:var(--pix)}
+#game.on{display:flex}
+#game .wv{width:100%;font-size:.85rem;color:var(--muted)}
+#game .hp{color:#e0453a;font-size:1.15rem;letter-spacing:.08em}
+#game .sc{font-size:1.15rem}
+#game .end{width:100%;font-family:var(--read);font-size:.95rem;margin:0}
+#game .end b{font-family:var(--pix)}
+#game .row{display:flex;gap:.5rem;margin-left:auto}
+#game small{width:100%;font-family:var(--read);font-size:.78rem;color:var(--muted)}
+body.gaming #story,body.gaming #card{display:none!important}
 #nogl{position:fixed;inset:0;display:none;place-items:center;padding:2rem;text-align:center;color:#fff}
 
 @media (max-width:760px){
@@ -190,7 +201,7 @@ button{font:inherit;color:inherit}
   <div class="num" id="snum"></div>
   <h2 id="stitle"></h2>
   <p id="stext"></p>
-  <nav><button class="btn" id="prev">Back</button><button class="btn" id="next">Next</button><button class="btn" id="bloop">Play bloopers</button><span class="sp"></span><div id="dots" aria-hidden="true"></div></nav>
+  <nav><button class="btn" id="prev">Back</button><button class="btn" id="next">Next</button><button class="btn" id="bloop">Play bloopers</button><button class="btn" id="bonk" title="Bonk the gremlins your failed runs let loose">🔨 Bug Bonk</button><span class="sp"></span><div id="dots" aria-hidden="true"></div></nav>
 </section>
 
 <aside id="card" class="blk" aria-live="polite">
@@ -226,6 +237,7 @@ button{font:inherit;color:inherit}
     <p class="sub" style="margin-top:1.2rem">Claycay (clay-kay): a cay is a small island built from sand and coral, a little at a time. Like yours. Claycay is an independent project, not affiliated with or endorsed by Anthropic. Claude is a trademark of Anthropic. <span id="skillv"></span></p>
   </div>
 </div>
+<div id="game" class="blk" aria-live="polite"></div>
 <div id="toast"></div>
 <div id="nogl"><p>This world needs WebGL, which this browser has turned off.</p></div>
 
@@ -455,7 +467,7 @@ function setSleep(on,streak){ asleep=on; bed.visible=on; zzz.hidden=!on; [legL,l
   zzz.querySelector('small').textContent= on&&streak>1? `asleep ${streak} days` : '';
   if(on){ const x=HOME.x+HOME.ring, z=HOME.z+1, y=surf(x,z); bed.position.set(x,y,z); avatar.position.set(x,y+.55,z); avatar.rotation.set(-Math.PI/2,0,0); } }
 const headPos=new THREE.Vector3();
-function stepAvatar(dt){ if(!HOME) return;
+function stepAvatar(dt){ if(!HOME||game) return;
   const on=!ACTIVE[day], st=on?sleepStreak(day):0; if(on!==asleep||(on&&st!==shownStreak)){ shownStreak=st; setSleep(on,st); }
   if(!asleep){ walkT+=dt*(reduce?.15:1); const a=walkT*.55, x=HOME.x+Math.cos(a)*HOME.ring, z=HOME.z+Math.sin(a)*HOME.ring;
     avatar.position.set(x,surf(Math.round(x),Math.round(z)),z); avatar.rotation.set(0,-a,0);
@@ -567,7 +579,7 @@ canvas.addEventListener('pointerup',e=>{ const was=ptrs.has(e.pointerId); ptrs.d
 canvas.addEventListener('pointercancel',e=>ptrs.delete(e.pointerId));
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); anim=null; rig.dist=Math.min(600,Math.max(10,rig.dist*(1+Math.sign(e.deltaY)*.08))); },{passive:false});
 const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
-function pick(x,y){ ndc.set(x/innerWidth*2-1,-(y/innerHeight)*2+1); ray.setFromCamera(ndc,camera); const hit=ray.intersectObjects(PICK,false)[0]; if(hit) showCard(hit.object.userData.id); else hideCard(); }
+function pick(x,y){ if(game){ gameTap(x,y); return; } ndc.set(x/innerWidth*2-1,-(y/innerHeight)*2+1); ray.setFromCamera(ndc,camera); const hit=ray.intersectObjects(PICK,false)[0]; if(hit) showCard(hit.object.userData.id); else hideCard(); }
 
 /* ---------- card ---------- */
 function showCard(id){ const N=INFO[id]; if(!N){ hideCard(); return; }
@@ -685,7 +697,7 @@ $('trophies').addEventListener('click',e=>{ if(e.target.id==='trophies') $('trop
 $('pname').textContent=W.owner||'You';
 if(W.skill) $('skillv').textContent=`Made with Claycay skill ${W.skill}.`;
 let shownLvl=0;
-function hud(force){ const t=curT(); const xp=xpAt(t), L=levelOf(xp), a=lvlStart(L), b=lvlStart(L+1);
+function hud(force){ const t=game?NDAYS:curT(); /* the game jumps between days; the score stays today's */ const xp=xpAt(t), L=levelOf(xp), a=lvlStart(L), b=lvlStart(L+1);
   $('lvl').textContent=L; $('ptitle').textContent=`Level ${L}, ${titleOf(L)}`; $('bar').firstElementChild.style.width=Math.min(100,(xp-a)/(b-a)*100)+'%';
   $('xpnum').textContent=`${xp.toLocaleString('en')} XP, ${(b-xp).toLocaleString('en')} to level ${L+1}`; $('bar').setAttribute('aria-valuenow',String(xp-a));
   if(playing && shownLvl && L>shownLvl){ say(`Level up! ${L}: ${titleOf(L)}`,true); fireworks(new THREE.Vector3(rig.tx,rig.ty+6,rig.tz),30); }
@@ -699,7 +711,7 @@ function go(i){ if(bloop>=0) stopBloopers(); cur=Math.max(0,Math.min(CH.length-1
   flyTo(camFor(c.focus)); const id = c.focus==='world'?null : (INFO[c.focus]? c.focus : INFO['t:'+c.focus]? 't:'+c.focus : ({tasks:'ledger',forge:'forge',workshop:'workshop',village:'village',bank:'bank'})[c.focus]);
   if(id&&INFO[id]) showCard(id); else hideCard(); }
 $('prev').addEventListener('click',()=>go(cur-1)); $('next').addEventListener('click',()=>go(cur===CH.length-1?0:cur+1));
-addEventListener('keydown',e=>{ if(e.target.closest('button,input')) return; if(e.key==='ArrowRight') go(cur+1); else if(e.key==='ArrowLeft') go(cur-1); else if(e.key===' '){ e.preventDefault(); togglePlay(); } else if(e.key==='Escape'){ hideCard(); $('trophies').classList.remove('show'); } });
+addEventListener('keydown',e=>{ if(game){ if(e.key==='Escape') endGame(); return; } if(e.target.closest('button,input')) return; if(e.key==='ArrowRight') go(cur+1); else if(e.key==='ArrowLeft') go(cur-1); else if(e.key===' '){ e.preventDefault(); togglePlay(); } else if(e.key==='Escape'){ hideCard(); $('trophies').classList.remove('show'); } });
 
 /* ---------- days ---------- */
 const daysEl=$('days'); daysEl.style.gridTemplateColumns=`repeat(${NDAYS},1fr)`; if(NDAYS>160) daysEl.style.gap='0';
@@ -746,6 +758,82 @@ function stepBloopers(dt){ if(bloop<0) return; if(pend){ pend.t-=dt; if(pend.t<=
   if(P) flyTo([P.x,P.y-1,P.z,rig.yaw+.3,.42,22],1); pend={r,t:reduce?.1:1}; bloopT=3.4; }
 $('bloop').addEventListener('click',()=>bloop>=0?stopBloopers():startBloopers());
 
+/* ---------- Bug Bonk: walk the islander, bonk the gremlins your failed runs let loose ---------- */
+// Just for fun: game points never touch XP, the card or the league.
+const GI=tasksI||ISL[0];
+const GOAL=GI? (LH? new THREE.Vector3(LH.x,surf(LH.x,LH.z),LH.z) : new THREE.Vector3(GI.x,surf(GI.x,GI.z),GI.z)) : null;
+const GOALNAME=LH?'the lighthouse':({forge:'the Forge',village:'the well',workshop:'the workbench',bank:'the Counting House'})[GI&&GI.kind]||'the middle';
+const land=(x,z)=>H(Math.round(x),Math.round(z))>=1;
+// waves come from your real worst days: the three days with the most failed runs, easiest first
+const WAVES=(()=>{ const by={}; FAILS.forEach(r=>(by[r[0]]=by[r[0]]||[]).push(r));
+  const w=Object.entries(by).sort((a,b)=>b[1].length-a[1].length).slice(0,3).sort((a,b)=>a[1].length-b[1].length)
+    .map(([d,runs])=>({day:+d,runs,label:`${dayName(+d)}: ${runs.length} stumble${runs.length>1?'s':''}`}));
+  while(w.length<3) w.push({day:null,runs:[],label:'Practice round'}); return w; })();
+const GM={}; const gmat=c=>GM[c]||(GM[c]=new THREE.MeshLambertMaterial({color:c,map:TEX}));
+const gBody=new THREE.BoxGeometry(.95,.75,.95), gEye=new THREE.BoxGeometry(.22,.22,.06), gPup=new THREE.BoxGeometry(.1,.1,.04), gHorn=new THREE.BoxGeometry(.14,.3,.14);
+function gremlin(o){ const g=new THREE.Group(); const b=new THREE.Mesh(gBody,gmat(OUT[o]??0xe0453a)); b.position.y=.4; b.castShadow=true; g.add(b);
+  for(const sx of [-.2,.2]){ const e=new THREE.Mesh(gEye,gmat(0xffffff)); e.position.set(sx,.55,.48); const p=new THREE.Mesh(gPup,gmat(0x1d2330)); p.position.set(sx,.53,.52); const h=new THREE.Mesh(gHorn,gmat(0x2c3240)); h.position.set(sx*1.6,.9,0); g.add(e,p,h); }
+  g.scale.setScalar(1.45); scene.add(g); return g; }
+function spawnPoint(r){ const T=r&&TOPS['t:'+r[2]];
+  if(T&&GOAL){ const dx=T.x-GOAL.x, dz=T.z-GOAL.z, d=Math.hypot(dx,dz)||1; for(const k of [3,2,1.2]){ const x=T.x+dx/d*k, z=T.z+dz/d*k; if(land(x,z)) return [x,z]; } }
+  for(let i=0;i<20;i++){ const a=Math.random()*Math.PI*2, R=GI.r-2.5-Math.random()*2, x=GI.x+Math.cos(a)*R, z=GI.z+Math.sin(a)*R; if(land(x,z)) return [x,z]; }
+  return [GI.x+GI.r-3,GI.z]; }
+let game=null; const keys={};
+addEventListener('keydown',e=>{ if(!game) return; const k=e.key.toLowerCase(); if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)){ keys[k]=true; e.preventDefault(); } });
+addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+const GHUD=$('game');
+function ghud(){ if(!game) return; if(game.over){ return; }
+  GHUD.innerHTML=`<span class="wv"></span><span class="hp">${'♥'.repeat(game.hp)}${'♡'.repeat(3-game.hp)}</span><span class="sc">🔨 ${game.score}</span><span class="row"><button class="btn" id="gquit">Quit</button></span><small>${matchMedia('(pointer:coarse)').matches?'Tap where the islander should run.':'WASD or arrow keys to move, or click the ground.'} Walk into a gremlin to bonk it. Don’t let them reach ${GOALNAME}.</small>`;
+  GHUD.querySelector('.wv').textContent=`Wave ${game.w+1} of ${WAVES.length}. ${WAVES[game.w].label}`; $('gquit').onclick=endGame; }
+function startWave(w){ const W_=WAVES[w]; game.w=w; game.left=Math.max(6+w*3,Math.min(14+w*6,W_.runs.length*2)); game.spawnT=1.2; game.gap=Math.max(.5,1.5-w*.35); game.speed=1.5+w*.45;
+  if(W_.day!=null){ setDay(W_.day,.5); updDay(); }
+  say(`Wave ${w+1}: ${W_.label}`,true); ghud(); }
+function startGame(){ if(!GI||!HOME) return; document.activeElement&&document.activeElement.blur&&document.activeElement.blur(); if(bloop>=0) stopBloopers(); playing=false; syncPlay(); hideCard(); $('trophies').classList.remove('show');
+  if(asleep) setSleep(false,0); [legL,legR,armL,armR].forEach(m=>m.rotation.set(0,0,0)); eyeL.scale.y=eyeR.scale.y=1; torso.scale.y=1; avatar.rotation.set(0,0,0);
+  let sx=GOAL.x+3, sz=GOAL.z+3; if(!land(sx,sz)){ sx=GOAL.x; sz=GOAL.z; }
+  game={p:new THREE.Vector3(sx,0,sz),target:null,hp:3,score:0,combo:0,lastBonk:-9,gs:[],w:0,over:false,t:0,ri:0};
+  document.body.classList.add('gaming'); GHUD.classList.add('on'); $('bonk').textContent='Stop Bug Bonk';
+  if(!FAILS.length) say('No failed runs on record. These are practice gremlins.');
+  avatar.scale.setScalar(1.7); flyTo([GI.x,2,GI.z,rig.yaw,1.18,camera.aspect<1?GI.r*1.45+10:GI.r*2.7+26],1.2); startWave(0); }
+function endGame(){ if(!game) return; for(const G of game.gs) scene.remove(G.m); game=null; asleep=null; avatar.scale.setScalar(1.25);
+  document.body.classList.remove('gaming'); GHUD.classList.remove('on'); GHUD.textContent=''; $('bonk').textContent='🔨 Bug Bonk'; for(const k in keys) keys[k]=false; setDay(NDAYS-1,.999); viewHour=12; go(cur); }
+function finish(won){ game.over=true; for(const G of game.gs) scene.remove(G.m); game.gs=[];
+  const key='cw-bonk-'+W.key, best=Math.max(store.get(key)||0,game.score), rec=game.score>(store.get(key)||0); store.set(key,best);
+  if(won){ fireworks(GOAL.clone().add(new THREE.Vector3(0,6,0)),40); say(`${GOALNAME[0].toUpperCase()+GOALNAME.slice(1)} is safe!`,true); } else say('The gremlins got in. Shake it off.');
+  GHUD.innerHTML=`<p class="end"></p><span class="row"><button class="btn" id="gagain">Play again</button><button class="btn" id="gquit">Back to the story</button></span><small>Just for fun: Bug Bonk points never count as XP.</small>`;
+  GHUD.querySelector('.end').innerHTML=`<b>${won?'All '+WAVES.length+' waves cleared!':'Game over in wave '+(game.w+1)+'.'}</b> You bonked <b>${game.score}</b> gremlin${game.score===1?'':'s'}. ${rec&&game.score?'New best!':'Best: '+best+'.'}`;
+  $('gagain').onclick=()=>{ endGame(); startGame(); }; $('gquit').onclick=endGame; }
+const gPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0), gHit=new THREE.Vector3();
+function gameTap(x,y){ if(!game||game.over) return; ndc.set(x/innerWidth*2-1,-(y/innerHeight)*2+1); ray.setFromCamera(ndc,camera); gPlane.constant=-(GI.h+1); if(ray.ray.intersectPlane(gPlane,gHit)) game.target=gHit.clone(); }
+function floatAt(p,text){ if(FLO.length>12) return; const el=document.createElement('div'); el.className='xpf'; el.textContent=text; document.body.appendChild(el); FLO.push({el,p:p.clone().add(new THREE.Vector3(0,2,0)),t:0}); }
+function stepGame(dt){ if(!game||game.over) return; game.t+=dt; const G0=game;
+  // the islander
+  let mx=0,mz=0; const f=[-Math.sin(rig.yaw),-Math.cos(rig.yaw)], r=[Math.cos(rig.yaw),-Math.sin(rig.yaw)];
+  if(keys.w||keys.arrowup){ mx+=f[0]; mz+=f[1]; } if(keys.s||keys.arrowdown){ mx-=f[0]; mz-=f[1]; } if(keys.d||keys.arrowright){ mx+=r[0]; mz+=r[1]; } if(keys.a||keys.arrowleft){ mx-=r[0]; mz-=r[1]; }
+  if(mx||mz) G0.target=null; else if(G0.target){ mx=G0.target.x-G0.p.x; mz=G0.target.z-G0.p.z; if(Math.hypot(mx,mz)<.3){ G0.target=null; mx=mz=0; } }
+  const len=Math.hypot(mx,mz), moving=len>0;
+  if(moving){ const sp=7*dt/len, nx=G0.p.x+mx*sp, nz=G0.p.z+mz*sp; if(land(nx,G0.p.z)) G0.p.x=nx; if(land(G0.p.x,nz)) G0.p.z=nz; avatar.rotation.set(0,Math.atan2(mx,mz),0); walkT+=dt*1.6; }
+  avatar.position.set(G0.p.x,surf(Math.round(G0.p.x),Math.round(G0.p.z)),G0.p.z);
+  const sw=moving&&!reduce?Math.sin(walkT*6)*.7:0; legL.rotation.x=sw; legR.rotation.x=-sw; armL.rotation.x=-sw*.8; armR.rotation.x=sw*.8;
+  // spawning
+  const WV=WAVES[G0.w]; if(G0.left>0){ G0.spawnT-=dt; if(G0.spawnT<=0){ G0.spawnT=G0.gap*(.7+Math.random()*.6); G0.left--;
+    const run=WV.runs.length? WV.runs[G0.ri++%WV.runs.length] : null, o=run? run[3] : ['blocked','error','unverified'][G0.ri++%3];
+    const [x,z]=spawnPoint(run); const m=gremlin(o); m.position.set(x,surf(Math.round(x),Math.round(z)),z);
+    G0.gs.push({m,x,z,ph:Math.random()*6,sp:G0.speed*(.85+Math.random()*.35)});
+    if(run&&G0.ri%4===1){ const T=W.tasks.find(t=>t.id===run[2]); bubble('t:'+run[2],o==='blocked'?'bad':o==='error'?'err':'ghost',T?T.name:run[2],quip(run[2],o)); } } }
+  // gremlins
+  for(let i=G0.gs.length-1;i>=0;i--){ const g=G0.gs[i]; const dx=GOAL.x-g.x, dz=GOAL.z-g.z, d=Math.hypot(dx,dz);
+    if(d<1.8){ scene.remove(g.m); G0.gs.splice(i,1); G0.hp--; lampFlash=1; say(G0.hp>0?`A gremlin reached ${GOALNAME}!`:'Oh no.'); ghud(); if(G0.hp<=0){ finish(false); return; } continue; }
+    g.x+=dx/d*g.sp*dt; g.z+=dz/d*g.sp*dt; g.ph+=dt*9;
+    g.m.position.set(g.x,surf(Math.round(g.x),Math.round(g.z))+(reduce?0:Math.abs(Math.sin(g.ph))*.4),g.z); g.m.rotation.y=Math.atan2(dx,dz);
+    if(Math.hypot(g.x-G0.p.x,g.z-G0.p.z)<1.5){ const at=g.m.position.clone(); scene.remove(g.m); G0.gs.splice(i,1);
+      G0.combo=G0.t-G0.lastBonk<1.2? G0.combo+1 : 1; G0.lastBonk=G0.t; G0.score++;
+      for(let k=0;k<6;k++){ const p=getP(sGeo,OUT.error); p.kind='spark'; p.dur=.9; p.from=at.clone(); p.vel=new THREE.Vector3((Math.random()-.5)*6,4+Math.random()*3,(Math.random()-.5)*6); p.mesh.position.copy(at); }
+      floatAt(at,G0.combo>1?`BONK ×${G0.combo}`:'BONK'); ghud(); } }
+  if(G0.left<=0&&!G0.gs.length){ if(G0.w+1<WAVES.length) startWave(G0.w+1); else finish(true); } }
+$('bonk').addEventListener('click',()=>game?endGame():startGame());
+if(!GI||!HOME) $('bonk').hidden=true;
+
 /* ---------- sky ---------- */
 const SKY=[[0,0x10162e],[5,0x1c2347],[6.5,0xf0a46a],[8,0x8fc7f0],[17,0x8fc7f0],[18.6,0xf08a5a],[20,0x232a52],[24,0x10162e]];
 const cA=new THREE.Color(), cB=new THREE.Color();
@@ -773,7 +861,7 @@ function frame(){ const dt=Math.min(.05,clock.getDelta()); elapsed+=dt;
   for(const A of AUR){ const mat=A.m.material; mat.opacity+=((night?.6-A.k*.12:0)-mat.opacity)*Math.min(1,dt*1.5); if(mat.opacity<.01) continue;
     const pos=A.m.geometry.attributes.position, b=A.base; for(let i=0;i<pos.count;i++){ const x=b[i*3]; pos.array[i*3+2]=Math.sin(x*.04+elapsed*(reduce?0:.5)+A.k*1.7)*9; pos.array[i*3+1]=b[i*3+1]+Math.sin(x*.07-elapsed*(reduce?0:.3))*3; } pos.needsUpdate=true; }
   for(const k in BEAC){ const B=BEAC[k]; B.m.material.opacity=(B.st==='ok'?.14:.32)+(night?.12:0)+(B.st==='watch'?Math.sin(elapsed*3)*.12:0); }
-  stepBloopers(dt); stepParticles(dt); stepCam(dt); applyCam(); stepAvatar(dt); stepOverlays(dt); stepToast(dt);
+  stepBloopers(dt); stepGame(dt); stepParticles(dt); stepCam(dt); applyCam(); stepAvatar(dt); stepOverlays(dt); stepToast(dt);
   renderer.render(scene,camera); requestAnimationFrame(frame); }
 setDay(NDAYS-1,.999); viewHour=12; hud(); go(0); anim=null; { const c=camFor(CH[0].focus); Object.assign(rig,{tx:c[0],ty:c[1],tz:c[2],yaw:c[3],pitch:c[4],dist:fit(c[5])}); } applyCam(); renderTrophies(curT());
 requestAnimationFrame(frame);

@@ -25,7 +25,9 @@ Build one self-contained web page where the person's Claude activity becomes isl
 
 On top sits a game layer: XP for everything, levels with titles, achievements that pop
 during playback with the moment they were earned, quests the person can tick off for XP,
-a blooper reel of failed runs, and a league: players swap score cards (a short code
+a blooper reel of failed runs, Bug Bonk (a playable round where the person steers the
+islander and bonks gremlins let loose by their three worst days of failed runs; just for
+fun, its points never count as XP), and a league: players swap score cards (a short code
 with counts and achievements only, no titles) and the trophy room ranks everyone by
 all-time XP or XP this month, with crowns for most built, chattiest, automation king,
 longest streak, collector and most stumbles. The person opens it, presses play and watches their
