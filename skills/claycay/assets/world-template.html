@@ -800,6 +800,9 @@ function makeSfx(load,save){ let ctx=null, on=load()!==false;
     ouch:()=>{ tone(320,70,.38,'sawtooth',.18); }, tick:()=>tone(660,660,.07,'square',.1), go:()=>tone(990,990,.16,'square',.12),
     wave:()=>notes([523,659,784],.09,'square',.09), win:()=>notes([523,659,784,1047,1319],.1,'square',.1), lose:()=>notes([392,330,262,196],.14,'triangle',.16),
     stamp:()=>notes([784,1047],.08,'triangle',.14) };
+  // browsers keep audio locked until a tap or key; unlock on the first one (a game opened from a link starts before any tap)
+  const unlock=()=>{ if(!on) return; try{ ctx=ctx||new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); }catch(e){} };
+  addEventListener('pointerdown',unlock,{passive:true}); addEventListener('keydown',unlock);
   return { get on(){ return on; }, toggle(){ on=!on; save(on); if(on) this.play('tick'); return on; },
     play(n,k){ if(!on) return; try{ ctx=ctx||new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); S[n]&&S[n](k); }catch(e){} } }; }
 const SFX=makeSfx(()=>store.get('cw-sound'),v=>store.set('cw-sound',v));
@@ -895,6 +898,8 @@ function frame(){ const dt=Math.min(.05,clock.getDelta()); elapsed+=dt;
   renderer.render(scene,camera); requestAnimationFrame(frame); }
 setDay(NDAYS-1,.999); viewHour=12; hud(); go(0); anim=null; { const c=camFor(CH[0].focus); Object.assign(rig,{tx:c[0],ty:c[1],tz:c[2],yaw:c[3],pitch:c[4],dist:fit(c[5])}); } applyCam(); renderTrophies(curT());
 requestAnimationFrame(frame);
+// claycay.com/demo#bonk opens straight into Bug Bonk
+if(location.hash==='#bonk'&&!$('bonk').hidden) setTimeout(startGame,700);
 })();
 </script>
 </body>
