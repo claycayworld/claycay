@@ -56,12 +56,24 @@ offset they're read as UTC; `tz` decides which calendar day an event lands on.
   Anything else is skipped. With any runs, the world gets a Counting House islet (the value
   ledger): delivered and nudged runs are gold, the rest and every run of a duplicate task are
   chimney smoke. Display only, no XP.
-- **quests**: open to-dos the person can tick off in the trophy room for 50 XP each. With
-  none given, the script suggests them from tasks marked duplicate, broken or watch.
+- **quests**: up to 5 the person can tick off in the trophy room for 50 XP each:
+  `{"text", "why", "how", "kind"}` where `kind` is `todo` (default) or `tune`, `why` holds
+  their real numbers and `how` is one line. A plain string still works. The script then adds
+  up to 5 coach quests of its own (`scripts/coach.py`): tune quests for duplicate, failing
+  (3 of the last 10 runs), watched or quiet (60% nothing new over 10+ runs) tasks and for 5+
+  chats sharing a first word outside any project, and up to 2 discover quests for surfaces
+  not used yet (project, artifact, scheduled task, Claude Code, Cowork). Discover quests show
+  as ghost islands. The page also gets `coachMet`, the checks already satisfied, so a quest
+  shown in an earlier build ticks itself once it's done.
+- **unseen**: optional list of surfaces you couldn't check (`projects`, `tasks`, `code`,
+  `cowork`, `artifacts`). A surface also counts as unchecked when its key (`projects`,
+  `tasks`/`runs`, `code_sessions`, `artifacts`) is missing. The coach never suggests an
+  unchecked surface, so leave keys out rather than writing empty lists you didn't check.
 - **quips**: optional per-task lines for the speech bubbles, keyed by task id and outcome.
   Without them, generic jokes are used.
 - **chapters.focus**: `world`, `tasks`, `bank`, `forge`, `workshop`, `village`, `projects`, a task
-  id, or an item id the script assigns (`a3`, `c12`, `p0`). Prefer island names.
+  id, an item id the script assigns (`a3`, `c12`, `p0`), or a ghost island (`g:projects`,
+  `g:tasks`, `g:forge`, `g:workshop`) when a discover quest exists. Prefer island names.
 
 ## Scoring (fixed, so worlds are comparable)
 

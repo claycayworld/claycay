@@ -38,15 +38,24 @@ history unfold with their score climbing.
 1. **Gather.** Read `references/gathering.md` and collect what this surface can reach.
    Do it without asking first; only ask for things you genuinely can't get (for example
    project names when there's no list). Tell the person in one line what you could and
-   couldn't see.
+   couldn't see. In activity.json, leave a key out entirely when you couldn't look (no
+   project list, no run log, Claude Code not reachable) and write an empty list only when
+   you looked and found none: the coach only suggests a Claude feature where you looked.
 2. **Write the story.** Write 5 to 9 chapters (`chapters` in activity.json): an opening
-   over the whole world, one per island that exists, and a closing one about score and
-   quests. Each is 2 to 4 sentences, concrete, with real numbers and names from their
+   over the whole world, one per island that exists, one "What's next" chapter built on
+   the best coach quest, and a closing one about score and quests. Each is 2 to 4 sentences, concrete, with real numbers and names from their
    data, and a bit of warmth or humor. Write them in the person's language. Write the chat
    `note` lines and any task `quips` the same way. This is what makes it theirs rather
    than a dashboard, so spend effort here.
-3. **Quests.** Add 2 to 5 open to-dos you actually saw in the data or conversation
-   (a broken task to fix, a duplicate to delete, a draft never sent). Don't make up chores.
+3. **Quests: be their coach.** The script already adds quests from the data (failing,
+   duplicate or quiet tasks, chats that want a project, Claude features not tried yet; see
+   `scripts/coach.py`), so don't repeat those. Add 2 to 5 that only you can see from titles,
+   notes and the conversation, each with a `why` holding their real numbers and a one-line
+   `how`. Look for patterns that cost them time: the same request asked again and again
+   (make it an artifact they reuse, or a scheduled task), long threads restarted with the
+   same context (a project with instructions), a draft never sent, a tool half built. Use
+   `"kind": "tune"` for those and `"todo"` for plain to-dos. Never make up chores, and
+   never coach on health, money or relationships.
 4. **Build.** Save `activity.json` (schema: `references/data-format.md`) and run
    `python scripts/build_world.py activity.json -o /mnt/user-data/outputs/claycay.html --tz <their IANA zone>`
    (add `--redact` if they chose it). If they have an items code from the claycay.com shop

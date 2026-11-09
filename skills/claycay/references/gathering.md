@@ -1,7 +1,9 @@
 # Gathering activity
 
 Use whatever this surface offers and skip what it doesn't. A world with only chats is
-still a good world. Never invent items to fill an island.
+still a good world. Never invent items to fill an island. Leave out the key of anything you
+couldn't look at; an empty list tells the coach you looked and found nothing, and it will
+then suggest trying that feature.
 
 ## claude.ai (chat)
 

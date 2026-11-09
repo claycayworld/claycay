@@ -120,7 +120,11 @@ button{font:inherit;color:inherit}
 #mycode{width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;padding:.4rem;background:var(--panel-2);color:var(--ink);border:0;word-break:break-all;display:none}
 #rmsg{font-size:.85rem;color:var(--muted);min-height:1.2em;margin:.2rem 0 0}
 #quests{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
-#quests label{display:flex;gap:.6rem;align-items:flex-start;cursor:pointer;padding:.45rem .6rem;background:var(--panel-2)}
+#quests li{padding:.45rem .6rem;background:var(--panel-2)}
+#quests label{display:flex;gap:.6rem;align-items:flex-start;cursor:pointer}
+#quests .qk{font-family:var(--pix);font-size:.75rem;padding:.05rem .35rem;margin-right:.4rem;background:var(--panel);white-space:nowrap}
+#quests .qd{margin:.3rem 0 0 1.75rem;font-size:.85rem;color:var(--muted)}
+#quests .qd b{color:var(--ink);font-weight:600}
 #quests input{width:1.15rem;height:1.15rem;margin-top:.15rem;accent-color:#3fae5a;flex:none}
 #quests .done span{text-decoration:line-through;color:var(--muted)}
 #quests .rw{margin-left:auto;font-family:var(--pix);font-size:.85rem;color:var(--muted);white-space:nowrap}
@@ -223,7 +227,7 @@ body.gaming #story,body.gaming #card{display:none!important}
     <h2 id="ttitle">Trophy room</h2>
     <p class="sub" id="tsub"></p>
     <h3>Quests</h3>
-    <p class="sub">Tick one off when it’s done in real life. Each is worth 50 XP, and only this browser remembers.</p>
+    <p class="sub">Some are tips worked out from your own data. Tick one off when it’s done, or rebuild your world later and the ones it can see you did tick themselves. Each is worth 50 XP, and only this browser remembers.</p>
     <ul id="quests"></ul>
     <h3>League</h3>
     <p class="sub">Swap score cards with friends who have their own Claycay. A card holds only counts and achievements, never titles. Rivals live in this browser, so a visitor can paste their own card here to see how they compare.</p>
@@ -308,6 +312,11 @@ const ringR = ISL.length? ISL[0].r+30 : 20;
 const PROJ = W.projects.map((p,i)=>{ const n=W.projects.length; const row=i%2, k=(i/2)|0, per=Math.max(1,Math.ceil(n/2)-1);
   const th=Math.PI*(.32+.66*(per? k/per : .5)); const R=ringR+(row?9:0); return {...p,i,kind:'proj',x:Math.round(Math.cos(th)*R),z:Math.round(Math.sin(th)*R),r:3.2,h:1,id:'p'+i}; });
 const ALLI=[...ISL,...PROJ];
+// the coach (coach.py): Claude surfaces not used yet show up as ghost islands you can tap
+const GLABEL={forge:'The Forge',workshop:'Cowork Workshop',tasks:'Scheduled tasks',projects:'Project Archipelago'};
+const GHOSTS=W.quests.filter(q=>q.kind==='discover'&&GLABEL[q.island]&&!ISL.some(I=>I.kind===q.island)&&!(q.island==='projects'&&PROJ.length)).map(q=>{
+  const a= q.island==='projects'? Math.PI*.65 : q.island==='tasks'? -2.2 : ANG[q.island], R= q.island==='projects'? ringR : (ISL[0]?ISL[0].r:8)+21;
+  return {q,kind:q.island,x:Math.round(Math.cos(a)*R),z:Math.round(Math.sin(a)*R),r:5,id:'g:'+q.island}; });
 function heightAt(x,z){ let best=-1;
   for(const I of ALLI){ const d=Math.hypot(x-I.x,z-I.z); const r=I.r+(vnoise(x*.2+I.x,z*.2+I.z)-.5)*(I.kind==='proj'?1.2:3.5); if(d>r) continue;
     let h = d>r-2.2 ? Math.max(1,I.h-1) : I.h;
@@ -324,7 +333,7 @@ const put=(x,y,z,c,arr)=>(arr||SOLID).push(x,y,z,c);
 const ITEMS=new Set(W.items||[]); const SNOW=ITEMS.has('snowcap');
 if(SNOW) Object.assign(C,{snow:0xf4f7fb,snow2:0xe4ecf4,ice:0xbfe3f2,leaf:0x3d6f4a});
 function box(x0,y0,z0,x1,y1,z1,c,hollow,arr){ for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){ if(hollow&&x>x0&&x<x1&&z>z0&&z<z1) continue; put(x,y,z,c,arr); } }
-let minX=0,maxX=0,minZ=0,maxZ=0; for(const I of ALLI){ minX=Math.min(minX,I.x-I.r-3); maxX=Math.max(maxX,I.x+I.r+3); minZ=Math.min(minZ,I.z-I.r-3); maxZ=Math.max(maxZ,I.z+I.r+3); }
+let minX=0,maxX=0,minZ=0,maxZ=0; for(const I of [...ALLI,...GHOSTS]){ minX=Math.min(minX,I.x-I.r-3); maxX=Math.max(maxX,I.x+I.r+3); minZ=Math.min(minZ,I.z-I.r-3); maxZ=Math.max(maxZ,I.z+I.r+3); }
 for(let x=Math.floor(minX);x<=maxX;x++)for(let z=Math.floor(minZ);z<=maxZ;z++){ const h=H(x,z); if(h<0) continue;
   const edge=H(x+1,z)<h||H(x-1,z)<h||H(x,z+1)<h||H(x,z-1)<h;
   const shore=h<=1||(edge&&h<=2), peak=SNOW&&h>=3&&!edge;
@@ -426,6 +435,12 @@ PROJ.forEach(P=>{ const y=surf(P.x,P.z); const dead=!!P.retired;
 W.artifacts.forEach(a=>{ INFO[a.id]={pill:SRC[a.src]||SRC.code,title:a.t,meta:'Last updated '+dateOf(a.d),text:a.note||(a.group&&a.group!=='other'?`Part of ${a.group}.`:''),link:a.url}; });
 W.chats.forEach(c=>{ INFO[c.id]={pill:SRC.chat,title:c.t,meta:'Last active '+dateOf(c.d),text:c.note||'',link:c.url}; });
 W.sessions.forEach(s=>{ INFO[s.id]={pill:SRC.session,title:s.t,meta:dateOf(s.d),text:s.note||`A Claude Code session in ${s.group}.`}; });
+// ghost islands: see-through ground and a signpost; tapping one opens its quest
+GHOSTS.forEach(G=>{ for(let dx=-G.r;dx<=G.r;dx++)for(let dz=-G.r;dz<=G.r;dz++){ const d=Math.hypot(dx,dz); if(d>G.r+(hash(G.x+dx,G.z+dz)-.5)*1.4) continue;
+    put(G.x+dx,1,G.z+dz,0xe4defc,GLASS); if(d<G.r-1.3) put(G.x+dx,2,G.z+dz,0xd2c8fa,GLASS); }
+  box(G.x,3,G.z,G.x,6,G.z,C.log); box(G.x-1,6,G.z,G.x+1,7,G.z,C.plank); put(G.x,8,G.z,C.gold);
+  pickBox(G.id,G.x-G.r,1,G.z-G.r,G.x+G.r,8,G.z+G.r);
+  INFO[G.id]={pill:['Not discovered yet','#7d68c9'],title:G.q.text,meta:G.q.why,text:'How: '+G.q.how}; });
 // a few trees on the biggest island
 if(ISL[0]){ const I=ISL[0]; let n=0; for(let i=0;i<300&&n<Math.round(I.r*.8);i++){ const x=Math.round(I.x+(hash(i,1)-.5)*I.r*1.6), z=Math.round(I.z+(hash(i,2)-.5)*I.r*1.6);
   if(H(x,z)<2) continue; let ok=true; for(const m of PICK){ if(Math.hypot(m.position.x-x,m.position.z-z)<4) ok=false; } if(Math.hypot(x-I.x,z-I.z)>I.r-4) ok=false;
@@ -501,6 +516,7 @@ ISL.forEach(I=>{ const y=surf(I.x,I.z)+(I.kind==='tasks'?18:12); tag(I.label,new
     m.scale.set(u,u,u*1.4); m.position.set((c-3)*u,(3-r)*u,0); g.add(m); }));
   g.position.set(I.x,y+11,I.z); scene.add(g); EMBLEMS.push({g,y:y+11,ph:I.x*.37}); });
 PROJ.forEach(P=>tag(P.name,new THREE.Vector3(P.x,surf(P.x,P.z)+7,P.z),'near'));
+GHOSTS.forEach(G=>tag('❓ '+GLABEL[G.kind],new THREE.Vector3(G.x,10,G.z),null,'not discovered yet, tap to see how'));
 if(PROJ.length){ const m=PROJ[(PROJ.length/2)|0]; tag('Project Archipelago',new THREE.Vector3(m.x,10,m.z),'far','each flag is a project'); }
 
 /* ---------- particles, bubbles, floaters ---------- */
@@ -612,19 +628,36 @@ function achAt(t){ return W.achievements.filter(a=>a.d+a.h/24<=t+1e-6); }
 
 /* ---------- quests ---------- */
 let done=store.get('cw-quests-'+W.key)||{};
+const qkey=(q,i)=>q.id||i;  // coach quests keep their id across rebuilds; written ones go by position
 function questXP(){ return Object.keys(done).filter(k=>done[k]).length*XP.quest; }
+// a coach quest shown in an earlier build that the data now says is done ticks itself
+const coachSeen=store.get('cc-coach-'+W.key)||{}, coachMet=new Set(W.coachMet||[]), justDone=[];
+for(const id in coachSeen) if(coachMet.has(id)&&!done[id]){ done[id]=true; justDone.push(coachSeen[id]); }
+(W.quests||[]).forEach(q=>{ if(q.id) coachSeen[q.id]=q.text; });
+store.set('cw-quests-'+W.key,done); store.set('cc-coach-'+W.key,coachSeen);
+const finished=Object.keys(coachSeen).filter(id=>done[id]&&!W.quests.some(q=>q.id===id));
+if(justDone.length) setTimeout(()=>{ justDone.forEach(t=>say(`Quest done since last time: ${t}! +${XP.quest} XP`,true)); fireworks(LAMP_T.clone(),30); hud(true); },1800);
+const QKIND={tune:'🔧 Tune',discover:'🧭 Try'};
 function renderTrophies(t){ const got=achAt(t), ids=new Set(got.map(a=>a.id));
-  $('tsub').textContent=`${got.length} of ${W.achievements.length+W.locked.length} achievements unlocked, ${Object.values(done).filter(Boolean).length} of ${W.quests.length} quests done.`;
+  const qdone=W.quests.filter((q,i)=>done[qkey(q,i)]).length+finished.length;
+  $('tsub').textContent=`${got.length} of ${W.achievements.length+W.locked.length} achievements unlocked, ${qdone} of ${W.quests.length+finished.length} quests done.`;
   const A=$('achs'); A.textContent='';
   for(const a of [...W.achievements,...W.locked]){ const on=ids.has(a.id); const d=document.createElement('div'); d.className='ach'+(on?'':' locked');
     const ic=document.createElement('div'); ic.className='ic'; ic.textContent=on?a.icon:'?'; const tx=document.createElement('div'); const b=document.createElement('b'); b.textContent=a.name; const s=document.createElement('small');
     s.textContent= on? `${a.desc} Unlocked ${dateOf(a.d)}.` : a.desc; tx.append(b,s); d.append(ic,tx); A.appendChild(d); }
   const Q=$('quests'); Q.textContent='';
-  W.quests.forEach((q,i)=>{ const li=document.createElement('li'); const l=document.createElement('label'); if(done[i]) l.className='done'; const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!done[i];
-    const sp=document.createElement('span'); sp.dir='auto'; sp.textContent=q.text; const rw=document.createElement('span'); rw.className='rw'; rw.textContent='+'+XP.quest+' XP';
-    cb.addEventListener('change',()=>{ done[i]=cb.checked; store.set('cw-quests-'+W.key,done); if(cb.checked){ say('Quest complete! +'+XP.quest+' XP',true); fireworks(LAMP_T.clone(),24); } renderTrophies(curT()); hud(true); });
+  W.quests.forEach((q,i)=>{ const k=qkey(q,i); const li=document.createElement('li'); const l=document.createElement('label'); if(done[k]) l.className='done'; const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!done[k];
+    const sp=document.createElement('span'); sp.dir='auto'; if(QKIND[q.kind]){ const c=document.createElement('span'); c.className='qk'; c.textContent=QKIND[q.kind]; sp.appendChild(c); } sp.append(q.text);
+    const rw=document.createElement('span'); rw.className='rw'; rw.textContent='+'+XP.quest+' XP';
+    cb.addEventListener('change',()=>{ done[k]=cb.checked; store.set('cw-quests-'+W.key,done); if(cb.checked){ say('Quest complete! +'+XP.quest+' XP',true); fireworks(LAMP_T.clone(),24); } renderTrophies(curT()); hud(true); });
+    l.append(cb,sp,rw); li.appendChild(l);
+    if(q.why||q.how){ const d=document.createElement('div'); d.className='qd'; d.dir='auto'; if(q.why) d.append(q.why+' ');
+      if(q.how){ const b=document.createElement('b'); b.textContent='How: '; d.append(b,q.how); } li.appendChild(d); }
+    Q.appendChild(li); });
+  finished.forEach(id=>{ const li=document.createElement('li'); const l=document.createElement('label'); l.className='done'; const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=true; cb.disabled=true;
+    const sp=document.createElement('span'); sp.dir='auto'; sp.textContent=coachSeen[id]; const rw=document.createElement('span'); rw.className='rw'; rw.textContent='done';
     l.append(cb,sp,rw); li.appendChild(l); Q.appendChild(li); });
-  if(!W.quests.length){ const li=document.createElement('li'); li.textContent='No open quests. Suspicious.'; Q.appendChild(li); }
+  if(!W.quests.length&&!finished.length){ const li=document.createElement('li'); li.textContent='No open quests. Suspicious.'; Q.appendChild(li); }
   $('tcount').textContent=`${got.length}/${W.achievements.length+W.locked.length}`; }
 /* ---------- league: score cards and rivals ---------- */
 const b64e=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');

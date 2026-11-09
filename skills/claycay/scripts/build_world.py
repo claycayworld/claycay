@@ -12,6 +12,7 @@ import argparse, datetime as dt, hashlib, json, os, re, sys
 from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import coach
 import items as shop
 import version
 
@@ -250,16 +251,15 @@ def main():
         achievements.append({'id': 'haunted', 'name': 'Haunted', 'icon': '👻', 'desc': ach['haunted']['desc'], 'd': max(0, d), 'h': h})
     achievements.sort(key=lambda x: (x['d'], x['h']))
 
-    # ---- quests: given ones first, then obvious ones from task status
-    quests = [{'text': q['text'] if isinstance(q, dict) else str(q)} for q in raw.get('quests', [])]
-    if not raw.get('quests'):
-        for t in tasks:
-            if t['status'] == 'duplicate':
-                quests.append({'text': f'Delete the duplicate task “{t["name"]}”.'})
-            elif t['status'] == 'broken':
-                quests.append({'text': f'Fix “{t["name"]}”, it keeps failing.'})
-            elif t['status'] == 'watch':
-                quests.append({'text': f'Check on “{t["name"]}”.'})
+    # ---- quests: the ones written for this person first, then the coach's (see coach.py)
+    quests = []
+    for q in raw.get('quests', [])[:5]:
+        q = q if isinstance(q, dict) else {'text': str(q)}
+        if q.get('text'):
+            quests.append({'kind': q.get('kind') if q.get('kind') in ('todo', 'tune') else 'todo', 'text': q['text'],
+                           'why': q.get('why', ''), 'how': q.get('how', '')})
+    coached, coach_met = coach.coach_quests(raw, chats, arts, sessions, tasks, runs, redact=a.redact)
+    quests += coached
 
     # ---- page payload
     def pack_art(x):
@@ -278,7 +278,7 @@ def main():
         'sessions': [{'id': s['id'], 't': s['t'], 'group': s['group'], 'd': dh(s['when'])[0], 'h': dh(s['when'])[1], 'note': s['note']} for s in sessions],
         'projects': [{'name': p['name'] if isinstance(p, dict) else str(p), 'note': (p.get('note') if isinstance(p, dict) else '') or '',
                       'retired': bool(p.get('retired')) if isinstance(p, dict) else False} for p in raw.get('projects', [])],
-        'achievements': achievements, 'locked': locked, 'quests': quests, 'quips': raw.get('quips', {}),
+        'achievements': achievements, 'locked': locked, 'quests': quests, 'coachMet': coach_met, 'quips': raw.get('quips', {}),
     }
     # ---- shop items: looks only, never XP, so they stay out of the score card
     W['items'], _, item_notes = shop.unlock(a.items)
@@ -300,7 +300,12 @@ def main():
             ch.append({'focus': 'village', 'title': 'Chat Village', 'text': f'{len(chats)} chats, one house each, newest closest to the well.'})
         if raw.get('projects'):
             ch.append({'focus': 'projects', 'title': 'Project Archipelago', 'text': f'{len(raw["projects"])} projects, one island each.'})
-        ch.append({'focus': 'world', 'title': 'Your score', 'text': 'Open the trophy room to see your achievements and tick off quests as you finish them in real life.'})
+        nxt = next((q for q in coached if q['kind'] == 'discover'), coached[0] if coached else None)
+        if nxt:
+            ghost = nxt.get('island')
+            ch.append({'focus': f'g:{ghost}' if ghost else 'world', 'title': 'What’s next',
+                       'text': f'{nxt["why"]} {"Tap the ghost island to see how." if ghost else "Open 🏆 to see how."}'})
+        ch.append({'focus': 'world', 'title': 'Your score', 'text': 'Open the trophy room to see your achievements and quests. Some quests come from your own data, and the ones you finish tick themselves off next time you rebuild.'})
     W['chapters'] = ch
 
     # ---- score card for competing with other players: counts only, no titles or links
@@ -339,7 +344,7 @@ def main():
     print(json.dumps({'out': a.out, 'days': ndays, 'chats': len(chats), 'artifacts': len(arts), 'sessions': len(sessions),
                       'tasks': len(tasks), 'runs': len(runs), 'projects': len(W['projects']), 'xp': total, 'level': lvl,
                       'achievements': [x['name'] for x in achievements], 'locked': [x['name'] for x in locked],
-                      'quests': len(quests), 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
+                      'quests': len(quests), 'coach': [q['text'] for q in coached], 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
                       'bytes': len(html)}, ensure_ascii=False, indent=1))
 
 
