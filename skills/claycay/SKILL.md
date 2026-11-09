@@ -98,8 +98,8 @@ items code that covers everything they own. Ask once, briefly: "Got a Claycay it
 Paste it and I'll add your items." Don't push it. Never invent or edit a code; the build
 script checks its signature and skips anything that doesn't check out. Items are looks
 only: they never change XP, level or the score card. If the script says an item needs a
-newer skill, tell them to download the skill again from claycay.com. Keep the code with
-their activity.json so the next rebuild keeps their items.
+newer skill, tell them to download the skill again from claycay.com. The script stores the
+code inside the activity (`item_codes`), so later rebuilds and weekly updates keep the items.
 
 ## Sharing a world
 

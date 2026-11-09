@@ -65,6 +65,8 @@ offset they're read as UTC; `tz` decides which calendar day an event lands on.
   not used yet (project, artifact, scheduled task, Claude Code, Cowork). Discover quests show
   as ghost islands. The page also gets `coachMet`, the checks already satisfied, so a quest
   shown in an earlier build ticks itself once it's done.
+- **item_codes**: optional list of shop items codes (`CI1.`). The script also stores codes
+  passed with `--items` here, so the world carries them and weekly updates keep the items.
 - **unseen**: optional list of surfaces you couldn't check (`projects`, `tasks`, `code`,
   `cowork`, `artifacts`). A surface also counts as unchecked when its key (`projects`,
   `tasks`/`runs`, `code_sessions`, `artifacts`) is missing. The coach never suggests an

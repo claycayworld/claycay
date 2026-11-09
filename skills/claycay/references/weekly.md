@@ -12,36 +12,54 @@ week?" Don't push. If they say yes:
    section and press "Get my post key", then paste it to you. The key can only post their
    own score card (counts and achievement ids, never titles), and getting a new key turns
    the old one off. Without a key the update still rebuilds the world; it just doesn't post.
-2. **Schedule it** if this surface can run scheduled tasks (Cowork scheduled tasks, or
-   `/schedule` in Claude Code): create one that runs weekly, Monday morning in their time
-   zone, with the prompt below filled in. The key goes in the prompt as plain text, so say
-   that it's only good for posting their score and they can replace it on claycay.com any
-   time. If this surface can't schedule, tell them they can say "update my Claycay" whenever
-   they like and it takes a minute.
+2. **Schedule it** only where the update can reach what you just gathered: the world (the
+   published artifact or the local file) and the same tools you gathered with. Before you
+   create a task, check that the scheduler on this surface runs with those tools, for example
+   a Cowork scheduled task on the same computer. Claude Code's `/schedule` runs in the cloud,
+   so it can't see this computer's Code sessions or a world saved as a local file: don't use
+   it for this. Run the task weekly, Monday morning in their time zone, with the prompt below.
+   The key goes in the prompt as plain text, so say it's only good for posting their score
+   and can be replaced on claycay.com any time. With no suitable scheduler, tell them they
+   can say "update my Claycay" whenever they like and it takes a minute.
 
 ## The weekly prompt
 
-> Update my Claycay world at <artifact url> using the claycay skill, following
-> references/weekly.md. <Post key: cck_...> Tell me the week in two lines.
+> Update my Claycay world at <artifact url, or the file path> using the claycay skill,
+> following references/weekly.md. <Post key: cck_...>
 
 ## What an update does
 
-1. Read the published world with the Artifact tool (`action: "read"`), save it, and run
-   `python scripts/extract_activity.py world.html -o activity.json`. It prints the time zone
-   and the last activity date. If it says there's no activity inside (a `--redact` world or
-   one from before skill 1.11), gather everything again as on the first build.
-2. Gather only what's new since that date (`references/gathering.md`), merge it in without
-   duplicates (same title and date is the same item), and set `end` to today if it's set.
-   Write `note` lines for the new chats and refresh the chapters that changed; keep the rest.
-3. Rebuild with the same flags as before plus `--week`:
-   `python scripts/build_world.py activity.json -o claycay.html --tz <tz> --week`.
-   Add `--items <code>` if they have one. Don't write a "This week" chapter yourself; the
-   script adds it with the real numbers.
-4. Publish over the same artifact (pass its url), so the link and the quests the person
-   ticked stay put.
-5. With a post key: `python scripts/post.py claycay.html --key <key>`. It prints the new
-   rank and the one before. Exit 2 means claycay.com couldn't be reached from here: say so
-   and give the score card to paste on the site instead. Exit 1 means the board refused it
+Run the scripts with `python3` from the skill folder (use `python` if that's what exists).
+
+1. **Get the old world.** A published world: read it with the Artifact tool
+   (`action: "read"`) and save it as `old.html`. A local file: copy it to `old.html`. Then run
+   `python3 scripts/extract_activity.py old.html -o activity.json`. It prints the time zone,
+   `start`, and `last`: the newest date for each source. If it says there's no activity
+   inside (a `--redact` world, or one from before skill 1.11), gather everything again as on
+   the first build.
+2. **Gather each source since its own date** in `last` (that day included, the merge drops
+   repeats). `null` means it was never gathered: gather it in full from `start` if you can
+   reach it now and add its key, otherwise keep leaving it out. A source you gathered before
+   but can't reach from here (for example chats, when this run is in Claude Code): keep its
+   old entries as they are. For Claude Code use
+   `python3 scripts/collect_claude_code.py --since <start>`; the merge handles the overlap.
+3. **Merge without duplicates.** Chats and artifacts match on `url` (title when there's no
+   url); on a match keep the newer one, since a continued chat or edited artifact moves its
+   date. Code sessions match on project plus `started_at`, runs on task plus `started_at`.
+   Set `end` to today if it's set. Write `note` lines for new chats and refresh the chapters
+   the new data changes. If there's no "What's next" chapter, add one from the best coach
+   quest. Drop written quests that are done or that a coach quest now covers.
+4. **Rebuild** with the old time zone and `--week --previous old.html`:
+   `python3 scripts/build_world.py activity.json -o claycay.html --tz <tz> --week --previous old.html`
+   (plus `--redact` if the world was redacted). Shop item codes are kept inside the activity
+   (`item_codes`), so no flag is needed for them. Don't write a "This week" chapter yourself:
+   the script adds it with the real numbers, covering everything since the old world.
+5. **Put it back**: publish over the same artifact (pass its url), or overwrite the same
+   local file, so the link and the quests the person ticked stay put.
+6. **Post** with a post key: `python3 scripts/post.py claycay.html --key <key>`. It prints
+   the new rank and the one before. Exit 2 means claycay.com couldn't be reached from here:
+   say so and give the score card to paste on the site. Exit 1 means the board refused it
    (a replaced key, or posted less than 10 minutes ago): pass the message on.
-6. Tell them the week in two lines: what grew (from the script's `week` output), the rank
-   change if posted, and one coach tip if there's a new one. Nothing else.
+7. **Tell them** in two lines, from the script's `week` and `since` output: what grew, any
+   level-up or new achievement, the rank change if posted, and the first of `new_coach` if
+   there is one. If a source couldn't be reached this time, add one line saying which.

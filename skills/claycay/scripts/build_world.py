@@ -2,7 +2,8 @@
 """Turn a Claude activity file (activity.json) into a single self-contained world page.
 
 Usage:
-  python build_world.py activity.json -o world.html [--redact] [--tz Asia/Jerusalem] [--items CI1.xxx] [--week]
+  python3 build_world.py activity.json -o world.html [--redact] [--tz Asia/Jerusalem] [--items CI1.xxx]
+                        [--week [--previous old-world.html]]
 
 Everything the page needs (layout data, XP, achievements, chapters, quests) is computed
 here and embedded, so the HTML works offline apart from three.js and two web fonts.
@@ -13,6 +14,7 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coach
+from extract_activity import read_state
 import items as shop
 import version
 
@@ -85,7 +87,8 @@ def main():
     ap.add_argument('--redact', action='store_true', help='hide chat titles, chat links and task notes')
     ap.add_argument('--tz', help='IANA time zone for day boundaries, e.g. Europe/London')
     ap.add_argument('--items', action='append', default=[], help='items code from claycay.com (CI1....); repeat for more')
-    ap.add_argument('--week', action='store_true', help='add a "This week" chapter about the last 7 days (for weekly updates)')
+    ap.add_argument('--week', action='store_true', help='add a "This week" chapter (for weekly updates)')
+    ap.add_argument('--previous', help='the world page this update replaces: the chapter then covers everything since it')
     a = ap.parse_args()
 
     raw = json.load(open(a.activity, encoding='utf-8'))
@@ -143,6 +146,10 @@ def main():
         start = dt.date.fromisoformat(raw['start'])
     if raw.get('end'):
         end = dt.date.fromisoformat(raw['end'])
+    # only what falls inside the range counts, so the timeline, XP and card agree
+    inside = lambda x: start <= x['when'].date() <= end
+    chats, arts, sessions, runs = [x for x in chats if inside(x)], [x for x in arts if inside(x)], \
+        [x for x in sessions if inside(x)], [x for x in runs if inside(x)]
     ndays = (end - start).days + 1
     if ndays > 400:
         print(f'note: {ndays} days is a long timeline; consider setting "start" to the last 6-12 months', file=sys.stderr)
@@ -282,11 +289,15 @@ def main():
         'achievements': achievements, 'locked': locked, 'quests': quests, 'coachMet': coach_met, 'quips': raw.get('quips', {}),
     }
     # ---- shop items: looks only, never XP, so they stay out of the score card
-    W['items'], _, item_notes = shop.unlock(a.items)
+    # item codes ride along in the activity, so weekly updates keep the person's shop items
+    codes = list(dict.fromkeys(c.strip() for c in list(a.items) + list(raw.get('item_codes', [])) if isinstance(c, str) and c.strip()))
+    if codes:
+        raw['item_codes'] = codes
+    W['items'], _, item_notes = shop.unlock(codes)
     W['skill'] = version.VERSION
 
     # ---- chapters: use the ones written for this person, else sensible defaults
-    ch = raw.get('chapters')
+    ch = list(raw.get('chapters') or [])   # a copy: raw is embedded in the page and must not collect weekly chapters
     if not ch:
         ch = [{'focus': 'world', 'title': 'Your Claycay',
                'text': f'Everything you did with Claude from {start:%d %B} to {end:%d %B %Y}, grown into islands. Press play to run the days and watch your XP climb, or tap anything to open it.'}]
@@ -307,8 +318,15 @@ def main():
             ch.append({'focus': f'g:{ghost}' if ghost else 'world', 'title': 'What’s next',
                        'text': f'{nxt["why"]} {"Tap the ghost island to see how." if ghost else "Open 🏆 to see how."}'})
         ch.append({'focus': 'world', 'title': 'Your score', 'text': 'Open the trophy room to see your achievements and quests. Some quests come from your own data, and the ones you finish tick themselves off next time you rebuild.'})
-    # ---- weekly updates: what the last 7 days of the range added
-    wk_from = max(start, end - dt.timedelta(days=6))
+    # ---- weekly updates: what's new since the previous build (--previous), else the last 7 days
+    before = read_state(a.previous) if a.previous else None
+    if before and not before.get('last'):   # pages from skill 1.11 only carry the activity: use its newest date
+        old = [x.get(k) for key in ('chats', 'artifacts', 'code_sessions', 'runs') for x in before['activity'].get(key, [])
+               for k in ('updated_at', 'date', 'started_at') if isinstance(x, dict) and x.get(k)]
+        before['last'] = before['activity'].get('end') or (max(old)[:10] if old else None)
+    prev_last = dt.date.fromisoformat(before['last']) if before and before.get('last') else None
+    wk_from = prev_last + dt.timedelta(days=1) if prev_last and prev_last < end else end - dt.timedelta(days=6)
+    wk_from = max(start, wk_from)
     inwk = lambda t: wk_from <= t.date() <= end
     wk_runs = [r for r in runs if inwk(r['when'])]
     wk_ach = [x for x in achievements if x['d'] >= (wk_from - start).days]
@@ -325,10 +343,11 @@ def main():
         text = (f'From {wk_from:%d %b} to {end:%d %b}: {", ".join(bits)}. That’s +{week["xp"]} XP.' if bits
                 else 'A quiet week, nothing new since last time. The islander caught up on sleep.')
         if wk_ach:
-            text += f' New this week: {", ".join(week["achievements"])}.'
+            text += f' New {"this week" if (end - wk_from).days <= 7 else "since last time"}: {", ".join(week["achievements"])}.'
         if coached:
             text += f' Your coach has {len(coached)} tip{"s" if len(coached) != 1 else ""} waiting in 🏆.'
-        ch.insert(1 if ch else 0, {'focus': 'world', 'title': 'This week', 'text': text})
+        ch = [c for c in ch if c.get('title') not in ('This week', 'Since last time')]
+        ch.insert(1 if ch else 0, {'focus': 'world', 'title': 'This week' if (end - wk_from).days <= 7 else 'Since last time', 'text': text})
     W['chapters'] = ch
 
     # ---- score card for competing with other players: counts only, no titles or links
@@ -365,7 +384,8 @@ def main():
     # the activity rides along inside the page, so the next update can start from it
     # (extract_activity.py). Never in a redacted world: that page may be shared.
     if not a.redact:
-        state = json.dumps({'activity': raw, 'tz': tzname, 'skill': version.VERSION}, ensure_ascii=False).replace('</', '<\\/')
+        state = json.dumps({'activity': raw, 'tz': tzname, 'skill': version.VERSION, 'last': end.isoformat(), 'xp': total, 'level': lvl,
+                            'ach': [x['id'] for x in achievements], 'coach': [q['id'] for q in coached]}, ensure_ascii=False).replace('</', '<\\/')
         head, _, tail = html.rpartition('</body>')
         html = f'{head}<script type="application/json" id="claycay-activity">{state}</script>\n</body>{tail}'
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
@@ -373,7 +393,10 @@ def main():
     print(json.dumps({'out': a.out, 'days': ndays, 'chats': len(chats), 'artifacts': len(arts), 'sessions': len(sessions),
                       'tasks': len(tasks), 'runs': len(runs), 'projects': len(W['projects']), 'xp': total, 'level': lvl,
                       'achievements': [x['name'] for x in achievements], 'locked': [x['name'] for x in locked],
-                      'quests': len(quests), 'week': week, 'coach': [q['text'] for q in coached], 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
+                      'quests': len(quests), 'week': week, 'since': before and {
+                          'xp_before': before.get('xp'), 'xp_after': total, 'level_before': before.get('level'), 'level_after': lvl,
+                          'new_achievements': [x['name'] for x in achievements if x['id'] not in before['ach']] if 'ach' in before else None,
+                          'new_coach': [q['text'] for q in coached if q['id'] not in before['coach']] if 'coach' in before else None}, 'coach': [q['text'] for q in coached], 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
                       'bytes': len(html)}, ensure_ascii=False, indent=1))
 
 

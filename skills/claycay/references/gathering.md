@@ -29,7 +29,7 @@ Map its fields onto `tasks` and `runs`. Without a log, leave both out.
 
 ## Claude Code
 
-Run `scripts/collect_claude_code.py` to list sessions from `~/.claude/projects`. It reads
+Run `scripts/collect_claude_code.py --since <start>` to list sessions from `~/.claude/projects`. It reads
 timestamps and folder names only, never message content. Artifacts made in Code can also
 come from the Artifact list if that tool is connected.
 
