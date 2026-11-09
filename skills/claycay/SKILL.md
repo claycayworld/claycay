@@ -74,6 +74,7 @@ history unfold with their score climbing.
    Mention the league in one line: 🏆 → copy the score card, then either post it on
    claycay.com (the public leaderboard) or send it to a friend who has their own Claycay.
    If the person asks where they rank, or has posted before, run `scripts/rank.py` (below).
+   Then offer weekly updates in one line (`references/weekly.md`).
    Keep it short and don't list every number; the page does that.
 
 ## Things to get right
@@ -153,6 +154,9 @@ they rebuild their world, since cards are snapshots.
 
 ## Updating later
 
-Keep the activity.json. Next time, gather only what's new since its `end`, merge it in,
-rebuild and publish over the same artifact. Quests the person ticked off are remembered
-by their browser, keyed to their name and start date.
+Every world carries its own activity inside the page (not `--redact` ones), so an update
+starts from the published world: read it, run `scripts/extract_activity.py`, gather only
+what's new, merge, rebuild with `--week` and publish over the same artifact. The full steps,
+the weekly scheduled task and posting with a post key (`scripts/post.py`) are in
+`references/weekly.md`. Quests the person ticked off are remembered by their browser, keyed
+to their name and start date, and coach quests they've since done tick themselves.

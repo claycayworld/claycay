@@ -2,7 +2,7 @@
 """Turn a Claude activity file (activity.json) into a single self-contained world page.
 
 Usage:
-  python build_world.py activity.json -o world.html [--redact] [--tz Asia/Jerusalem] [--items CI1.xxx]
+  python build_world.py activity.json -o world.html [--redact] [--tz Asia/Jerusalem] [--items CI1.xxx] [--week]
 
 Everything the page needs (layout data, XP, achievements, chapters, quests) is computed
 here and embedded, so the HTML works offline apart from three.js and two web fonts.
@@ -85,6 +85,7 @@ def main():
     ap.add_argument('--redact', action='store_true', help='hide chat titles, chat links and task notes')
     ap.add_argument('--tz', help='IANA time zone for day boundaries, e.g. Europe/London')
     ap.add_argument('--items', action='append', default=[], help='items code from claycay.com (CI1....); repeat for more')
+    ap.add_argument('--week', action='store_true', help='add a "This week" chapter about the last 7 days (for weekly updates)')
     a = ap.parse_args()
 
     raw = json.load(open(a.activity, encoding='utf-8'))
@@ -306,6 +307,28 @@ def main():
             ch.append({'focus': f'g:{ghost}' if ghost else 'world', 'title': 'What’s next',
                        'text': f'{nxt["why"]} {"Tap the ghost island to see how." if ghost else "Open 🏆 to see how."}'})
         ch.append({'focus': 'world', 'title': 'Your score', 'text': 'Open the trophy room to see your achievements and quests. Some quests come from your own data, and the ones you finish tick themselves off next time you rebuild.'})
+    # ---- weekly updates: what the last 7 days of the range added
+    wk_from = max(start, end - dt.timedelta(days=6))
+    inwk = lambda t: wk_from <= t.date() <= end
+    wk_runs = [r for r in runs if inwk(r['when'])]
+    wk_ach = [x for x in achievements if x['d'] >= (wk_from - start).days]
+    week = {'from': wk_from.isoformat(), 'to': end.isoformat(), 'chats': sum(inwk(c['when']) for c in chats),
+            'artifacts': sum(inwk(x['when']) for x in arts), 'sessions': sum(inwk(x['when']) for x in sessions),
+            'runs': len(wk_runs), 'delivered': sum(r['o'] in ('delivered', 'nudged') for r in wk_runs),
+            'failed': sum(r['o'] in ('blocked', 'error', 'unverified') for r in wk_runs), 'achievements': [x['name'] for x in wk_ach]}
+    week['xp'] = (week['chats'] * XP['chat'] + week['artifacts'] * XP['artifact'] + week['sessions'] * XP['session']
+                  + sum(XP['run'][r['o']] for r in wk_runs) + len(wk_ach) * XP['achievement'])
+    if a.week:
+        bits = [f'{n} {w}{"s" if n != 1 else ""}' for n, w in ((week['chats'], 'chat'), (week['artifacts'], 'artifact'), (week['sessions'], 'Code session')) if n]
+        if wk_runs:
+            bits.append(f'{len(wk_runs)} scheduled runs ({week["delivered"]} delivered{", " + str(week["failed"]) + " stumbled" if week["failed"] else ""})')
+        text = (f'From {wk_from:%d %b} to {end:%d %b}: {", ".join(bits)}. That’s +{week["xp"]} XP.' if bits
+                else 'A quiet week, nothing new since last time. The islander caught up on sleep.')
+        if wk_ach:
+            text += f' New this week: {", ".join(week["achievements"])}.'
+        if coached:
+            text += f' Your coach has {len(coached)} tip{"s" if len(coached) != 1 else ""} waiting in 🏆.'
+        ch.insert(1 if ch else 0, {'focus': 'world', 'title': 'This week', 'text': text})
     W['chapters'] = ch
 
     # ---- score card for competing with other players: counts only, no titles or links
@@ -339,12 +362,18 @@ def main():
     html = open(TEMPLATE, encoding='utf-8').read()
     title = raw.get('title') or f'{W["owner"]}’s Claycay'
     html = html.replace('__TITLE__', title.replace('<', '&lt;')).replace('__WORLD__', json.dumps(W, ensure_ascii=False).replace('</', '<\\/'))
+    # the activity rides along inside the page, so the next update can start from it
+    # (extract_activity.py). Never in a redacted world: that page may be shared.
+    if not a.redact:
+        state = json.dumps({'activity': raw, 'tz': tzname, 'skill': version.VERSION}, ensure_ascii=False).replace('</', '<\\/')
+        head, _, tail = html.rpartition('</body>')
+        html = f'{head}<script type="application/json" id="claycay-activity">{state}</script>\n</body>{tail}'
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     open(a.out, 'w', encoding='utf-8').write(html)
     print(json.dumps({'out': a.out, 'days': ndays, 'chats': len(chats), 'artifacts': len(arts), 'sessions': len(sessions),
                       'tasks': len(tasks), 'runs': len(runs), 'projects': len(W['projects']), 'xp': total, 'level': lvl,
                       'achievements': [x['name'] for x in achievements], 'locked': [x['name'] for x in locked],
-                      'quests': len(quests), 'coach': [q['text'] for q in coached], 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
+                      'quests': len(quests), 'week': week, 'coach': [q['text'] for q in coached], 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
                       'bytes': len(html)}, ensure_ascii=False, indent=1))
 
 
