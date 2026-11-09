@@ -31,6 +31,14 @@ XP = {'chat': 10, 'artifact': 30, 'session': 15, 'project': 20, 'quest': 50, 'ac
 OUTCOMES = set(XP['run'])
 SOURCES = {'code', 'cowork', 'chat', 'design'}
 STATUSES = {'ok', 'watch', 'broken', 'duplicate', 'retired'}
+# the world's pet turtle grows with the longest streak (looks only); keep in step with PET in world-template.html
+PET = [(0, 'Turtle egg'), (2, 'Hatchling'), (5, 'Little turtle'), (10, 'Turtle'), (20, 'Big turtle'), (50, 'Elder turtle')]
+
+
+def pet_stage(streak):
+    return max(k for k, (n, _) in enumerate(PET) if (streak or 0) >= n)
+
+
 RTL = re.compile('[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]')
 
 
@@ -318,6 +326,11 @@ def main():
             ch.append({'focus': f'g:{ghost}' if ghost else 'world', 'title': 'What’s next',
                        'text': f'{nxt["why"]} {"Tap the ghost island to see how." if ghost else "Open 🏆 to see how."}'})
         ch.append({'focus': 'world', 'title': 'Your score', 'text': 'Open the trophy room to see your achievements and quests. Some quests come from your own data, and the ones you finish tick themselves off next time you rebuild.'})
+    longest, run_len, prev = 0, 0, None
+    for d in sorted(days_active):
+        run_len = run_len + 1 if prev and (d - prev).days == 1 else 1
+        longest, prev = max(longest, run_len), d
+    pet = pet_stage(longest)
     # ---- weekly updates: what's new since the previous build (--previous), else the last 7 days
     before = read_state(a.previous) if a.previous else None
     if before and not before.get('last'):   # pages from skill 1.11 only carry the activity: use its newest date
@@ -344,6 +357,9 @@ def main():
                 else 'A quiet week, nothing new since last time. The islander caught up on sleep.')
         if wk_ach:
             text += f' New {"this week" if (end - wk_from).days <= 7 else "since last time"}: {", ".join(week["achievements"])}.'
+        if before and 'st' in before and pet > pet_stage(before['st']):
+            name = PET[pet][1].lower()
+            text += ' Your turtle hatched.' if pet == 1 else f' Your turtle grew: it’s {"an" if name[0] in "aeiou" else "a"} {name} now.'
         if coached:
             text += f' Your coach has {len(coached)} tip{"s" if len(coached) != 1 else ""} waiting in 🏆.'
         ch = [c for c in ch if c.get('title') not in ('This week', 'Since last time')]
@@ -359,10 +375,6 @@ def main():
     for x in sessions: month_xp[x['when'].strftime('%Y-%m')] += XP['session']
     for r in runs: month_xp[r['when'].strftime('%Y-%m')] += XP['run'][r['o']]
     for key in ach: month_xp[ach[key]['when'].strftime('%Y-%m')] += XP['achievement'] if key in {x['id'] for x in achievements} else 0
-    longest, run_len, prev = 0, 0, None
-    for d in sorted(days_active):
-        run_len = run_len + 1 if prev and (d - prev).days == 1 else 1
-        longest, prev = max(longest, run_len), d
     oc = Counter(r['o'] for r in runs)
     W['card'] = {'v': 1, 'n': W['owner'], 's': start.isoformat(), 'e': end.isoformat(), 'st': longest,
                  'a': [x['id'] for x in achievements],
@@ -384,7 +396,7 @@ def main():
     # the activity rides along inside the page, so the next update can start from it
     # (extract_activity.py). Never in a redacted world: that page may be shared.
     if not a.redact:
-        state = json.dumps({'activity': raw, 'tz': tzname, 'skill': version.VERSION, 'last': end.isoformat(), 'xp': total, 'level': lvl,
+        state = json.dumps({'activity': raw, 'tz': tzname, 'skill': version.VERSION, 'last': end.isoformat(), 'xp': total, 'level': lvl, 'st': longest,
                             'ach': [x['id'] for x in achievements], 'coach': [q['id'] for q in coached]}, ensure_ascii=False).replace('</', '<\\/')
         head, _, tail = html.rpartition('</body>')
         html = f'{head}<script type="application/json" id="claycay-activity">{state}</script>\n</body>{tail}'
@@ -396,7 +408,9 @@ def main():
                       'quests': len(quests), 'week': week, 'since': before and {
                           'xp_before': before.get('xp'), 'xp_after': total, 'level_before': before.get('level'), 'level_after': lvl,
                           'new_achievements': [x['name'] for x in achievements if x['id'] not in before['ach']] if 'ach' in before else None,
-                          'new_coach': [q['text'] for q in coached if q['id'] not in before['coach']] if 'coach' in before else None}, 'coach': [q['text'] for q in coached], 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
+                          'new_coach': [q['text'] for q in coached if q['id'] not in before['coach']] if 'coach' in before else None,
+                          'pet_before': PET[pet_stage(before['st'])][1] if 'st' in before else None, 'pet_after': PET[pet][1]},
+                      'streak': longest, 'pet': PET[pet][1], 'coach': [q['text'] for q in coached], 'card': card_code(W['card']), 'items': [shop.CATALOG[i] for i in W['items']], 'item_notes': item_notes, 'skill': version.VERSION, 'update': version.update_note(),
                       'bytes': len(html)}, ensure_ascii=False, indent=1))
 
 

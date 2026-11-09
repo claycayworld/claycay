@@ -5,7 +5,7 @@ also publishes it as site/public/skill-version.json for older copies to compare 
 """
 import json, os, urllib.request
 
-VERSION = '1.12'
+VERSION = '1.13'
 URL = os.environ.get('CLAYCAY_VERSION_URL', 'https://claycay.com/skill-version.json')
 
 

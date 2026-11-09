@@ -61,5 +61,5 @@ Run the scripts with `python3` from the skill folder (use `python` if that's wha
    say so and give the score card to paste on the site. Exit 1 means the board refused it
    (a replaced key, or posted less than 10 minutes ago): pass the message on.
 7. **Tell them** in two lines, from the script's `week` and `since` output: what grew, any
-   level-up or new achievement, the rank change if posted, and the first of `new_coach` if
+   level-up, new achievement or bigger turtle (`pet_before` to `pet_after`), the rank change if posted, and the first of `new_coach` if
    there is one. If a source couldn't be reached this time, add one line saying which.

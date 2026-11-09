@@ -22,6 +22,14 @@ Build one self-contained web page where the person's Claude activity becomes isl
   person used Claude, and sleeps in a sleeping bag with floating Zzz on days they didn't
   ("asleep 4 days" for a streak). Scheduled runs alone don't wake them, which shows that
   the tasks keep working while the person rests.
+- **The pet**: a turtle egg in a nest by the well. A 2-day streak hatches it, then it grows
+  with the longest streak (5, 10, 20 and 50 days) and follows the islander around. Streak
+  days count anything, scheduled runs included. Tapping it says how far the next size is.
+- **The weather**: the sky follows the 7 days up to the day on screen. Sunny when the person
+  was busy, showers or a storm when scheduled runs failed, fog when nothing happened, and a
+  rainbow once a storm passes. The day line names it; tapping it explains why.
+
+The pet and the weather are looks only: they never change XP.
 
 On top sits a game layer: XP for everything, levels with titles, achievements that pop
 during playback with the moment they were earned, quests the person can tick off for XP,
