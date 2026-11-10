@@ -1,5 +1,7 @@
 # Claycay
 
+[![skills.sh](https://skills.sh/b/claycayworld/claycay)](https://skills.sh/claycayworld/claycay)
+
 Your Claude activity, grown into a blocky island world you can play through.
 
 Chats become houses in a village. Artifacts get forged by the fire. Scheduled tasks stand
@@ -42,8 +44,16 @@ Then ask: *"Build my Claycay"*.
   waves are your three worst days. Just for fun: game points never count as XP.
 - XP and levels (level 10 starts at 2,250 XP), 17 achievements plus a secret one, and
   quests taken from your own loose ends.
+- 🧭 A coach: quests built from your own data (fix a task that keeps failing, give a pile
+  of related chats a project) and ghost islands for parts of Claude you haven't tried yet.
 - A league: post your score card on [claycay.com](https://claycay.com) and see where you stand.
   Friends can visit your island there, bonk your gremlins and stamp your guestbook.
+- 🏅 Monthly seasons: each month ranks the XP earned in it, and the top 3 keep a badge.
+- 👥 Crews: private leagues for a team or friends, joined with a link.
+- 🗓️ Weekly updates: a scheduled task can grow your world and post your score each week.
+
+Using ChatGPT, Gemini, Grok or DeepSeek too? Drop your data export on
+[claycay.com](https://claycay.com) and get a world built in your browser. Nothing is uploaded.
 
 ## Privacy
 
@@ -82,6 +92,12 @@ including at work. The one thing it rules out is using this code to build a comp
 
 - Website and league: [claycay.com](https://claycay.com)
 - Privacy: [claycay.com/privacy](https://claycay.com/privacy)
+- Listed on: [skills.sh](https://skills.sh/claycayworld/claycay) ·
+  [claude-plugins.dev](https://claude-plugins.dev/skills/@claycayworld/claycay/claycay)
+- Follow Cay: [X](https://x.com/claycayworld) · [Bluesky](https://bsky.app/profile/claycay.bsky.social) ·
+  [Threads](https://www.threads.net/@claycayworld) · [Instagram](https://www.instagram.com/claycayworld) ·
+  [TikTok](https://www.tiktok.com/@claycayworld)
+- What's new: [claycay.com/#news](https://claycay.com/#news) and [Releases](https://github.com/claycayworld/claycay/releases)
 - Questions: hello@claycay.com
 
 ---
